@@ -17,6 +17,7 @@ let currentAnalysis = null;  // cache dell'analisi della posizione corrente (evi
 let plyCount = 0;
 let boardFlipped = false;    // tiene traccia dell'orientamento corrente della scacchiera
 let selectedSquare = null;   // casella del pezzo selezionato per il "click-to-move"
+let wasAlreadySelected = false; // vedi onDragStart/onDrop: distingue un "click" di nuova selezione da un "click" di deselezione sullo stesso pezzo già selezionato
 let lastEvalScore = { cp: 0 };   // ultimo punteggio ricevuto dal motore (per ricalcolo al flip)
 let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
 
@@ -326,11 +327,19 @@ function attemptMove(from, to) {
 // (mostrando le mosse possibili), secondo click su una casella di destinazione
 // valida esegue la mossa; click sulla stessa casella deseleziona; click su
 // un altro proprio pezzo sposta la selezione.
+// NOTA: la selezione vera e propria di un pezzo avviene già in onDragStart
+// (vedi sotto), perché chessboard.js non genera un evento "click" affidabile
+// sui pezzi. Questa funzione gestisce quindi soprattutto il click sulla
+// casella di destinazione (vuota o con pezzo avversario catturabile) e il
+// caso di click su una casella "non valida" per deselezionare.
 function handleSquareClick(square) {
   if (boardLocked || chess.isGameOver()) return;
 
   if (selectedSquare) {
     if (square === selectedSquare) {
+      // Gestito già da onDrop per il caso "click sullo stesso pezzo selezionato";
+      // qui copriamo solo il caso di un click reale (non originato da un pezzo,
+      // quindi senza passare da onDragStart/onDrop) sulla stessa casella.
       clearSelection();
       return;
     }
@@ -367,11 +376,34 @@ function onDragStart(source, piece) {
   if ((chess.turn() === 'w' && !isWhitePiece) || (chess.turn() === 'b' && isWhitePiece)) {
     return false;
   }
-  // Mostra le caselle raggiungibili anche durante il trascinamento
+  // chessboard.js intercetta il mousedown sui pezzi per gestire il proprio
+  // drag interno (ricrea/riposiziona gli elementi DOM del pezzo), perciò un
+  // semplice "click" su un pezzo NON genera un evento "click" affidabile:
+  // la selezione del pezzo per il click-to-move va quindi fatta qui, che è
+  // l'unico callback invocato in modo affidabile sia per il click sia per
+  // il trascinamento.
+  //
+  // Se il pezzo cliccato è già quello selezionato, un click senza movimento
+  // dovrà DESELEZIONARLO: lo ricordiamo prima di chiamare selectSquare(),
+  // che sovrascrive subito selectedSquare, così onDrop potrà distinguere
+  // questo caso da quello di una nuova selezione.
+  wasAlreadySelected = (source === selectedSquare);
   selectSquare(source);
 }
 
 function onDrop(source, target) {
+  if (source === target) {
+    // Nessun trascinamento reale avvenuto: si tratta di un semplice click sul
+    // pezzo. Se era già selezionato lo deselezioniamo (toggle); altrimenti la
+    // selezione appena impostata da onDragStart resta visibile, in attesa del
+    // click sulla casella di destinazione (che verrà gestito da
+    // handleSquareClick, tramite l'evento "click" della casella di arrivo).
+    if (wasAlreadySelected) {
+      clearSelection();
+    }
+    return;
+  }
+
   clearSelection();
 
   const fenBefore = chess.fen();
@@ -443,6 +475,8 @@ board = Chessboard('board', {
 
 // Click-to-move: delegato sul contenitore della scacchiera così da funzionare
 // anche quando chessboard.js ridisegna le caselle/i pezzi al cambio posizione.
+// Gestisce soprattutto i click sulle caselle di destinazione (che non hanno
+// un proprio pezzo trascinabile e quindi generano un evento "click" normale).
 $('#board').on('click', '.square-55d63', function () {
   const square = squareFromElement(this);
   if (square) handleSquareClick(square);

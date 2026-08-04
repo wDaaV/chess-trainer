@@ -16,7 +16,6 @@
 
   <header class="site-header">
     <h1>♟️ Chess Trainer</h1>
-    <p>Gioca una mossa alla volta: Stockfish 18 ti dice se era la scelta migliore.</p>
   </header>
 
   <main class="container">
@@ -42,12 +41,14 @@
         <button id="undoBtn" type="button">Annulla mossa</button>
         <button id="flipBtn" type="button">Gira scacchiera</button>
 
-        <label for="depthSelect">Profondità motore</label>
-        <select id="depthSelect">
-          <option value="10">10 — veloce</option>
-          <option value="14" selected>14 — consigliata</option>
-          <option value="18">18 — lenta, più forte</option>
-        </select>
+        <div class="depth-control">
+          <label for="depthSelect">Profondità motore</label>
+          <select id="depthSelect">
+            <option value="10">10 — veloce</option>
+            <option value="14" selected>14 — consigliata</option>
+            <option value="18">18 — lenta, più forte</option>
+          </select>
+        </div>
       </div>
 
       <h2>Analisi delle mosse</h2>

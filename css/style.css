@@ -24,11 +24,10 @@ body {
 
 .site-header {
   text-align: center;
-  padding: 24px 16px 8px;
+  padding: 24px 16px 32px;
 }
 
-.site-header h1 { margin: 0 0 6px; }
-.site-header p { margin: 0; color: var(--muted); }
+.site-header h1 { margin: 0; }
 
 .container {
   max-width: 1560px;
@@ -46,8 +45,8 @@ body {
 /* ---------------------------------------------------------------------- */
 
 .board-section {
-  flex: 1 1 760px;
-  max-width: 860px;
+  flex: 1 1 700px;
+  max-width: 780px;
 }
 
 .board-row {
@@ -192,7 +191,18 @@ body {
 }
 
 .controls button:hover { border-color: var(--accent); }
-.controls label { color: var(--muted); font-size: 14px; margin-left: 6px; }
+.controls label { color: var(--muted); font-size: 14px; }
+
+/* Etichetta + select della profondità raggruppati in un unico blocco,
+   così il flex-wrap del contenitore .controls non li separa più su due righe:
+   o stanno insieme sulla stessa riga, o vanno a capo insieme come blocco unico. */
+.depth-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 
 .panel-section h2 { margin-top: 0; font-size: 18px; }
 
@@ -285,7 +295,15 @@ body {
 
 @media (max-width: 1050px) {
   .container { flex-direction: column; align-items: stretch; }
-  .board-section, .panel-section { max-width: 100%; }
+  .board-section, .panel-section {
+    max-width: 100%;
+    /* In colonna, flex-basis agisce sull'ALTEZZA (asse principale verticale):
+       i valori in px usati per il layout a due colonne (700px/520px) qui
+       forzavano un'altezza minima enorme sul mobile, lasciando un grande
+       spazio vuoto sotto la scacchiera. flex: 1 1 auto la fa tornare a
+       dipendere dal contenuto reale. */
+    flex: 1 1 auto;
+  }
 }
 
 @media (max-width: 480px) {
