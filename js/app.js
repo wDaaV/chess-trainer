@@ -16,6 +16,9 @@ let analysisDepth = 14;      // profondità di ricerca UCI (modificabile dal men
 let currentAnalysis = null;  // cache dell'analisi della posizione corrente (evita richieste doppie)
 let plyCount = 0;
 let boardFlipped = false;    // tiene traccia dell'orientamento corrente della scacchiera
+let selectedSquare = null;   // casella del pezzo selezionato per il "click-to-move"
+let lastEvalScore = { cp: 0 };   // ultimo punteggio ricevuto dal motore (per ricalcolo al flip)
+let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
 
 // ---------------------------------------------------------------------------
 // Riferimenti al DOM
@@ -105,31 +108,39 @@ function scoreToCp(score) {
   return score.cp;
 }
 
-// Formatta un punteggio per la visualizzazione (es. "+0.35" oppure "#+3")
-// sideToMove: 'w' o 'b', il colore a cui è riferito lo score (chi deve muovere in quella posizione)
-function formatScore(score, sideToMove) {
+// Formatta un punteggio per la visualizzazione (es. "+0.35" oppure "#+3").
+// sideToMove: 'w' o 'b', il colore a cui è riferito lo score (chi deve muovere in quella posizione).
+// flipped: se true, il punteggio viene riferito al lato in basso sulla scacchiera
+// (che dopo un "gira scacchiera" è il nero) invece che sempre al bianco:
+// basta invertire il segno del valore altrimenti calcolato per il bianco.
+function formatScore(score, sideToMove, flipped) {
   if (!score) return '0.00';
   if (score.mate !== undefined) {
-    const mateForWhite = sideToMove === 'w' ? score.mate : -score.mate;
-    return (mateForWhite > 0 ? '#+' : '#-') + Math.abs(mateForWhite);
+    let mateValue = sideToMove === 'w' ? score.mate : -score.mate; // riferito al bianco
+    if (flipped) mateValue = -mateValue;                           // riferito al lato in basso
+    return (mateValue > 0 ? '#+' : '#-') + Math.abs(mateValue);
   }
-  const whiteCp = sideToMove === 'w' ? score.cp : -score.cp;
-  const pawns = (whiteCp / 100).toFixed(2);
-  return (whiteCp > 0 ? '+' : '') + pawns;
+  let cpValue = sideToMove === 'w' ? score.cp : -score.cp; // riferito al bianco
+  if (flipped) cpValue = -cpValue;                          // riferito al lato in basso
+  const pawns = (cpValue / 100).toFixed(2);
+  return (cpValue > 0 ? '+' : '') + pawns;
 }
 
 // Aggiorna la barra di valutazione verticale.
-// La percentuale di riempimento (dal basso) rappresenta sempre il vantaggio
-// del bianco; l'orientamento visivo della barra viene poi ribaltato via CSS
-// (classe "flipped" su evalBarWrapEl) in base al lato della scacchiera in cui
-// si trova il bianco, cosi la barra segue sempre la scacchiera.
+// Il riempimento resta sempre calcolato rispetto al bianco (il ribaltamento
+// visivo è affidato allo scaleY(-1) via CSS sulla classe "flipped"), mentre
+// il testo del punteggio, mostrato sotto la barra, viene ricalcolato rispetto
+// al lato attualmente in basso sulla scacchiera tramite formatScore().
 function updateEvalBar(score, sideToMove) {
+  lastEvalScore = score;
+  lastEvalSideToMove = sideToMove;
+
   const cp = scoreToCp(score);
   const whiteCp = sideToMove === 'w' ? cp : -cp;
   const clamped = Math.max(-1000, Math.min(1000, whiteCp));
   const pct = 50 + (clamped / 1000) * 50;
   evalFillEl.style.height = pct + '%';
-  evalScoreEl.textContent = formatScore(score, sideToMove);
+  evalScoreEl.textContent = formatScore(score, sideToMove, boardFlipped);
 }
 
 // Converte una mossa in notazione UCI (es. "e2e4") in SAN (es. "e4"),
@@ -197,7 +208,7 @@ async function processMove(moveObj, fenBefore, fenAfter) {
   if (chess.isGameOver()) {
     setEngineStatus(getGameOverText());
   } else {
-    setEngineStatus('Tocca a te: muove il ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
+    setEngineStatus('Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
   }
 
   boardLocked = false;
@@ -225,7 +236,7 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove) {
 
   const header = document.createElement('div');
   header.className = 'move-item-header';
-  header.textContent = (isWhiteMove ? moveNumber + '. ' : moveNumber + '… ') + moveObj.san;
+  header.textContent = (isWhiteMove ? moveNumber + '. ' : moveNumber + '. ') + moveObj.san;
 
   const badge = document.createElement('span');
   badge.className = 'badge ' + classification.css;
@@ -245,6 +256,108 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove) {
 }
 
 // ---------------------------------------------------------------------------
+// Evidenziazione delle mosse possibili (usata sia dal drag sia dal click)
+// ---------------------------------------------------------------------------
+
+// Restituisce il selettore jQuery della casella data, sfruttando la classe
+// "square-<casella>" che chessboard.js applica a ogni div-casella.
+function squareSelector(square) {
+  return '#board .square-' + square;
+}
+
+// Estrae il nome della casella (es. "e4") dall'elemento DOM cliccato,
+// usando l'attributo data-square se presente, altrimenti la classe CSS.
+function squareFromElement(el) {
+  const fromAttr = el.getAttribute && el.getAttribute('data-square');
+  if (fromAttr) return fromAttr;
+  const match = (el.className || '').match(/\bsquare-([a-h][1-8])\b/);
+  return match ? match[1] : null;
+}
+
+function clearHighlights() {
+  $('#board .square-55d63').removeClass('move-hint move-hint-capture move-hint-selected');
+}
+
+function clearSelection() {
+  clearHighlights();
+  selectedSquare = null;
+}
+
+// Mostra i puntini/anelli sulle caselle raggiungibili dal pezzo in "square"
+// ed evidenzia la casella di partenza. Usata sia all'inizio di un trascinamento
+// sia al click su un proprio pezzo.
+function selectSquare(square) {
+  clearHighlights();
+  selectedSquare = square;
+  $(squareSelector(square)).addClass('move-hint-selected');
+
+  const moves = chess.moves({ square, verbose: true });
+  moves.forEach((m) => {
+    const isCapture = !!m.captured; // include anche la presa en passant
+    $(squareSelector(m.to)).addClass(isCapture ? 'move-hint-capture' : 'move-hint');
+  });
+}
+
+function pieceColorAt(square) {
+  const piece = chess.get(square);
+  return piece ? piece.color : null;
+}
+
+// Esegue la mossa (usata dal click-to-move; il drag-and-drop usa invece
+// direttamente chess.move dentro onDrop, dato che l'aggiornamento visivo
+// della scacchiera è già gestito dall'animazione di chessboard.js).
+function attemptMove(from, to) {
+  const fenBefore = chess.fen();
+  let moveObj;
+  try {
+    // La promozione viene sempre effettuata a Donna per semplicità
+    moveObj = chess.move({ from, to, promotion: 'q' });
+  } catch (err) {
+    return false;
+  }
+  const fenAfter = chess.fen();
+  clearSelection();
+  board.position(chess.fen());
+  processMove(moveObj, fenBefore, fenAfter);
+  return true;
+}
+
+// Gestisce il click su una casella: primo click seleziona un proprio pezzo
+// (mostrando le mosse possibili), secondo click su una casella di destinazione
+// valida esegue la mossa; click sulla stessa casella deseleziona; click su
+// un altro proprio pezzo sposta la selezione.
+function handleSquareClick(square) {
+  if (boardLocked || chess.isGameOver()) return;
+
+  if (selectedSquare) {
+    if (square === selectedSquare) {
+      clearSelection();
+      return;
+    }
+
+    const legalMoves = chess.moves({ square: selectedSquare, verbose: true });
+    const isLegalTarget = legalMoves.some((m) => m.to === square);
+    if (isLegalTarget) {
+      attemptMove(selectedSquare, square);
+      return;
+    }
+
+    const color = pieceColorAt(square);
+    if (color === chess.turn()) {
+      selectSquare(square);
+    } else {
+      clearSelection();
+    }
+    return;
+  }
+
+  const color = pieceColorAt(square);
+  if (color === chess.turn()) {
+    selectSquare(square);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Scacchiera (chessboard.js) e gestione delle mosse dell'utente
 // ---------------------------------------------------------------------------
 function onDragStart(source, piece) {
@@ -254,9 +367,13 @@ function onDragStart(source, piece) {
   if ((chess.turn() === 'w' && !isWhitePiece) || (chess.turn() === 'b' && isWhitePiece)) {
     return false;
   }
+  // Mostra le caselle raggiungibili anche durante il trascinamento
+  selectSquare(source);
 }
 
 function onDrop(source, target) {
+  clearSelection();
+
   const fenBefore = chess.fen();
   let moveObj;
   try {
@@ -278,6 +395,7 @@ function newGame() {
   board.start();
   currentAnalysis = null;
   plyCount = 0;
+  clearSelection();
   moveListEl.innerHTML = '';
   updateEvalBar({ cp: 0 }, 'w');
   boardLocked = true;
@@ -292,6 +410,7 @@ function undoMove() {
   const undone = chess.undo();
   if (!undone) return;
   board.position(chess.fen());
+  clearSelection();
   currentAnalysis = null; // la cache non è più valida: verrà ricalcolata alla prossima mossa
   plyCount = Math.max(0, plyCount - 1);
   if (moveListEl.lastElementChild) moveListEl.lastElementChild.remove();
@@ -300,11 +419,14 @@ function undoMove() {
 
 // Gira la scacchiera e, di conseguenza, anche la barra di valutazione:
 // aggiunge/rimuove la classe "flipped" che ribalta visivamente la barra
-// così il colore in basso sulla scacchiera resta il colore in basso nella barra.
+// così il colore in basso sulla scacchiera resta il colore in basso nella barra,
+// e ricalcola il testo del punteggio riferendolo al lato ora in basso.
 function flipBoard() {
   board.flip();
   boardFlipped = !boardFlipped;
   evalBarWrapEl.classList.toggle('flipped', boardFlipped);
+  clearSelection();
+  updateEvalBar(lastEvalScore, lastEvalSideToMove);
 }
 
 // ---------------------------------------------------------------------------
@@ -317,6 +439,13 @@ board = Chessboard('board', {
   onDragStart,
   onDrop,
   onSnapEnd
+});
+
+// Click-to-move: delegato sul contenitore della scacchiera così da funzionare
+// anche quando chessboard.js ridisegna le caselle/i pezzi al cambio posizione.
+$('#board').on('click', '.square-55d63', function () {
+  const square = squareFromElement(this);
+  if (square) handleSquareClick(square);
 });
 
 window.addEventListener('resize', () => board.resize());

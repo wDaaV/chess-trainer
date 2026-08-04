@@ -31,12 +31,12 @@ body {
 .site-header p { margin: 0; color: var(--muted); }
 
 .container {
-  max-width: 1320px;
+  max-width: 1560px;
   margin: 0 auto;
   padding: 16px;
   display: flex;
   flex-wrap: wrap;
-  gap: 28px;
+  gap: 32px;
   align-items: flex-start;
   justify-content: center;
 }
@@ -46,8 +46,8 @@ body {
 /* ---------------------------------------------------------------------- */
 
 .board-section {
-  flex: 1 1 640px;
-  max-width: 700px;
+  flex: 1 1 760px;
+  max-width: 860px;
 }
 
 .board-row {
@@ -62,7 +62,8 @@ body {
   width: 100%;
 }
 
-/* Barra di valutazione: verticale, a sinistra della scacchiera */
+/* Barra di valutazione: verticale, a sinistra della scacchiera.
+   Il punteggio testuale sta ora SOTTO la barra (ordine nel markup). */
 .eval-bar-wrap {
   display: flex;
   flex-direction: column;
@@ -74,7 +75,7 @@ body {
 .eval-bar {
   position: relative;
   flex: 1;
-  width: 22px;
+  width: 26px;
   border-radius: 7px;
   background: #2b2b2b;
   border: 1px solid var(--border);
@@ -83,7 +84,10 @@ body {
 }
 
 /* Quando la scacchiera viene girata, la barra si ribalta con lei:
-   il bianco resta sempre dal lato in cui si trova il bianco sulla scacchiera */
+   il bianco resta sempre dal lato in cui si trova il bianco sulla scacchiera.
+   Il testo del punteggio (fuori dalla .eval-bar) non viene ruotato: resta
+   sempre leggibile e sotto la barra, ma il suo VALORE viene ricalcolato
+   in JS in base al lato in basso (vedi updateEvalBar in app.js). */
 .eval-bar-wrap.flipped .eval-bar {
   transform: scaleY(-1);
 }
@@ -114,12 +118,52 @@ body {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Evidenziazione mosse possibili sulla scacchiera (click e drag)         */
+/* ---------------------------------------------------------------------- */
+
+.square-55d63 {
+  position: relative;
+  cursor: pointer;
+}
+
+/* Casella vuota raggiungibile: piccolo pallino semitrasparente */
+.square-55d63.move-hint::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26%;
+  height: 26%;
+  background: rgba(20, 20, 20, 0.28);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Casella con pezzo catturabile: anello attorno al bordo della casella */
+.square-55d63.move-hint-capture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px rgba(20, 20, 20, 0.35);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Casella del pezzo attualmente selezionato */
+.square-55d63.move-hint-selected {
+  box-shadow: inset 0 0 0 9999px rgba(79, 140, 255, 0.35);
+}
+
+/* ---------------------------------------------------------------------- */
 /* Colonna pannello: controlli + analisi mosse                            */
 /* ---------------------------------------------------------------------- */
 
 .panel-section {
-  flex: 1 1 380px;
-  max-width: 460px;
+  flex: 1 1 520px;
+  max-width: 620px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -239,11 +283,11 @@ body {
   padding: 24px 16px 40px;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1050px) {
   .container { flex-direction: column; align-items: stretch; }
   .board-section, .panel-section { max-width: 100%; }
 }
 
 @media (max-width: 480px) {
-  .eval-bar { width: 16px; }
+  .eval-bar { width: 18px; }
 }
