@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chess Trainer — Allenati con Stockfish 18</title>
 
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%99%9F%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
   <link rel="stylesheet"
     href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
     integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
@@ -37,17 +39,21 @@
     <section class="panel-section">
 
       <div class="controls">
-        <button id="newGameBtn" type="button">Nuova partita</button>
-        <button id="undoBtn" type="button">Annulla mossa</button>
-        <button id="flipBtn" type="button">Gira scacchiera</button>
+        <div class="controls-row controls-row-buttons">
+          <button id="newGameBtn" type="button">Nuova partita</button>
+          <button id="undoBtn" type="button">Annulla mossa</button>
+          <button id="flipBtn" type="button">Gira scacchiera</button>
+        </div>
 
-        <div class="depth-control">
-          <label for="depthSelect">Profondità motore</label>
-          <select id="depthSelect">
-            <option value="10">10 — veloce</option>
-            <option value="14" selected>14 — consigliata</option>
-            <option value="18">18 — lenta, più forte</option>
-          </select>
+        <div class="controls-row controls-row-depth">
+          <div class="depth-control">
+            <label for="depthSelect">Profondità motore</label>
+            <select id="depthSelect">
+              <option value="10">10 — veloce</option>
+              <option value="14" selected>14 — consigliata</option>
+              <option value="18">18 — lenta, più forte</option>
+            </select>
+          </div>
         </div>
       </div>
 

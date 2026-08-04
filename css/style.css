@@ -61,14 +61,13 @@ body {
   width: 100%;
 }
 
-/* Barra di valutazione: verticale, a sinistra della scacchiera.
-   Il punteggio testuale sta ora SOTTO la barra (ordine nel markup). */
 .eval-bar-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
+  flex: 0 0 40px;
+  width: 40px;
 }
 
 .eval-bar {
@@ -82,11 +81,6 @@ body {
   transition: transform 0.3s ease;
 }
 
-/* Quando la scacchiera viene girata, la barra si ribalta con lei:
-   il bianco resta sempre dal lato in cui si trova il bianco sulla scacchiera.
-   Il testo del punteggio (fuori dalla .eval-bar) non viene ruotato: resta
-   sempre leggibile e sotto la barra, ma il suo VALORE viene ricalcolato
-   in JS in base al lato in basso (vedi updateEvalBar in app.js). */
 .eval-bar-wrap.flipped .eval-bar {
   transform: scaleY(-1);
 }
@@ -171,12 +165,30 @@ body {
 
 .controls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: column;
+  gap: 10px;
   align-items: center;
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.controls-row {
+  display: flex;
+  width: 100%;
+}
+
+.controls-row-buttons {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.controls-row-buttons button {
+  flex: 1 1 0;
+}
+
+.controls-row-depth {
+  justify-content: center;
 }
 
 .controls button,
@@ -193,9 +205,6 @@ body {
 .controls button:hover { border-color: var(--accent); }
 .controls label { color: var(--muted); font-size: 14px; }
 
-/* Etichetta + select della profondità raggruppati in un unico blocco,
-   così il flex-wrap del contenitore .controls non li separa più su due righe:
-   o stanno insieme sulla stessa riga, o vanno a capo insieme come blocco unico. */
 .depth-control {
   display: flex;
   align-items: center;
@@ -230,9 +239,6 @@ body {
 
 .move-list-header span:last-child { text-align: right; }
 
-/* Elenco mosse in due colonne: bianco a sinistra, nero a destra.
-   Grazie all'ordine di inserimento (bianco poi nero, alternati),
-   il grid a 2 colonne allinea automaticamente le mosse per numero. */
 .move-list {
   max-height: 480px;
   overflow-y: auto;
@@ -297,11 +303,6 @@ body {
   .container { flex-direction: column; align-items: stretch; }
   .board-section, .panel-section {
     max-width: 100%;
-    /* In colonna, flex-basis agisce sull'ALTEZZA (asse principale verticale):
-       i valori in px usati per il layout a due colonne (700px/520px) qui
-       forzavano un'altezza minima enorme sul mobile, lasciando un grande
-       spazio vuoto sotto la scacchiera. flex: 1 1 auto la fa tornare a
-       dipendere dal contenuto reale. */
     flex: 1 1 auto;
   }
 }

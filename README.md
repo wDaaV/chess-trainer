@@ -8,7 +8,7 @@ Nessun backend, nessun account: tutta la logica gira lato client.
 
 ## Demo
 
-https://<tuo-utente>.github.io/<nome-repository>/
+https://wdaav.github.io/chess-trainer/
 
 ## Stack
 

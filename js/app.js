@@ -459,6 +459,7 @@ function flipBoard() {
   evalBarWrapEl.classList.toggle('flipped', boardFlipped);
   clearSelection();
   updateEvalBar(lastEvalScore, lastEvalSideToMove);
+  requestAnimationFrame(() => board.resize());
 }
 
 // ---------------------------------------------------------------------------
