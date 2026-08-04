@@ -15,6 +15,7 @@ let boardLocked = true;      // true finché il motore non è pronto o sta anali
 let analysisDepth = 14;      // profondità di ricerca UCI (modificabile dal menu)
 let currentAnalysis = null;  // cache dell'analisi della posizione corrente (evita richieste doppie)
 let plyCount = 0;
+let boardFlipped = false;    // tiene traccia dell'orientamento corrente della scacchiera
 
 // ---------------------------------------------------------------------------
 // Riferimenti al DOM
@@ -23,6 +24,7 @@ const engineStatusEl = document.getElementById('engineStatus');
 const moveListEl = document.getElementById('moveList');
 const evalFillEl = document.getElementById('evalFill');
 const evalScoreEl = document.getElementById('evalScore');
+const evalBarWrapEl = document.getElementById('evalBarWrap');
 
 function setEngineStatus(text) {
   engineStatusEl.textContent = text;
@@ -116,12 +118,17 @@ function formatScore(score, sideToMove) {
   return (whiteCp > 0 ? '+' : '') + pawns;
 }
 
+// Aggiorna la barra di valutazione verticale.
+// La percentuale di riempimento (dal basso) rappresenta sempre il vantaggio
+// del bianco; l'orientamento visivo della barra viene poi ribaltato via CSS
+// (classe "flipped" su evalBarWrapEl) in base al lato della scacchiera in cui
+// si trova il bianco, cosi la barra segue sempre la scacchiera.
 function updateEvalBar(score, sideToMove) {
   const cp = scoreToCp(score);
   const whiteCp = sideToMove === 'w' ? cp : -cp;
   const clamped = Math.max(-1000, Math.min(1000, whiteCp));
   const pct = 50 + (clamped / 1000) * 50;
-  evalFillEl.style.width = pct + '%';
+  evalFillEl.style.height = pct + '%';
   evalScoreEl.textContent = formatScore(score, sideToMove);
 }
 
@@ -206,7 +213,7 @@ function getGameOverText() {
 }
 
 // ---------------------------------------------------------------------------
-// Pannello elenco mosse
+// Pannello elenco mosse (due colonne: bianco / nero)
 // ---------------------------------------------------------------------------
 function addMoveToList(moveObj, bestSan, classification, isBestMove) {
   plyCount++;
@@ -291,8 +298,13 @@ function undoMove() {
   setEngineStatus('Mossa annullata. Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
 }
 
+// Gira la scacchiera e, di conseguenza, anche la barra di valutazione:
+// aggiunge/rimuove la classe "flipped" che ribalta visivamente la barra
+// così il colore in basso sulla scacchiera resta il colore in basso nella barra.
 function flipBoard() {
   board.flip();
+  boardFlipped = !boardFlipped;
+  evalBarWrapEl.classList.toggle('flipped', boardFlipped);
 }
 
 // ---------------------------------------------------------------------------

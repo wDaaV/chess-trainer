@@ -22,7 +22,20 @@
   <main class="container">
 
     <section class="board-section">
-      <div id="board" class="board"></div>
+
+      <div class="board-row">
+        <div class="eval-bar-wrap" id="evalBarWrap">
+          <span id="evalScore">0.00</span>
+          <div class="eval-bar"><div id="evalFill" class="eval-fill"></div></div>
+        </div>
+
+        <div id="board" class="board"></div>
+      </div>
+
+      <p id="engineStatus" class="status">Caricamento del motore Stockfish…</p>
+    </section>
+
+    <section class="panel-section">
 
       <div class="controls">
         <button id="newGameBtn" type="button">Nuova partita</button>
@@ -37,15 +50,6 @@
         </select>
       </div>
 
-      <div class="eval-bar-wrap">
-        <div class="eval-bar"><div id="evalFill" class="eval-fill"></div></div>
-        <span id="evalScore">0.00</span>
-      </div>
-
-      <p id="engineStatus" class="status">Caricamento del motore Stockfish…</p>
-    </section>
-
-    <section class="panel-section">
       <h2>Analisi delle mosse</h2>
       <div class="legend">
         <span class="badge best">Ottima</span>
@@ -53,6 +57,11 @@
         <span class="badge inaccuracy">Imprecisione</span>
         <span class="badge mistake">Errore</span>
         <span class="badge blunder">Errore grave</span>
+      </div>
+
+      <div class="move-list-header">
+        <span>Bianco</span>
+        <span>Nero</span>
       </div>
       <div id="moveList" class="move-list"></div>
     </section>
