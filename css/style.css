@@ -165,9 +165,9 @@ body {
 
 .controls {
   display: flex;
-  flex-wrap: column;
-  gap: 10px;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
@@ -175,7 +175,34 @@ body {
 
 .controls-row {
   display: flex;
-  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Solo mobile: due righe distinte, come richiesto --- */
+@media (max-width: 640px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .controls-row {
+    width: 100%;
+  }
+  .controls-row-buttons {
+    justify-content: space-between;
+  }
+  .controls-row-buttons button {
+    flex: 1 1 0; /* i 3 bottoni si dividono tutto lo spazio disponibile */
+  }
+  .controls-row-depth {
+    justify-content: center;
+  }
+  .depth-control {
+    width: 100%;
+  }
+  .depth-control select {
+    flex: 1; /* la select riempie lo spazio residuo accanto alla label */
+  }
 }
 
 .controls-row-buttons {
@@ -224,6 +251,7 @@ body {
 
 /* Intestazione delle due colonne Bianco / Nero */
 .move-list-header {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -239,14 +267,49 @@ body {
 
 .move-list-header span:last-child { text-align: right; }
 
+.move-list-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 6px;
+  left: 50%;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-1px);
+}
+
 .move-list {
   max-height: 480px;
   overflow-y: auto;
+}
+
+.move-list-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.move-list-inner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.move-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: stretch;
+  gap: 0;
 }
+
+.move-row .move-item:first-child { margin-right: 10px; }
+.move-row .move-item:nth-child(2) { margin-left: 10px; }
 
 .move-item {
   border: 1px solid var(--border);
@@ -310,3 +373,47 @@ body {
 @media (max-width: 480px) {
   .eval-bar { width: 18px; }
 }
+
+.notation-legend {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.notation-legend-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.notation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+}
+
+.notation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.notation-symbol {
+  flex: 0 0 auto;
+  min-width: 28px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #14171c;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  font-family: "Courier New", monospace;
+}
+
+.notation-desc { color: var(--muted); }

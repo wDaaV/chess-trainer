@@ -20,6 +20,8 @@ let selectedSquare = null;   // casella del pezzo selezionato per il "click-to-m
 let wasAlreadySelected = false; // vedi onDragStart/onDrop: distingue un "click" di nuova selezione da un "click" di deselezione sullo stesso pezzo già selezionato
 let lastEvalScore = { cp: 0 };   // ultimo punteggio ricevuto dal motore (per ricalcolo al flip)
 let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
+let plyHistory = [];       // pila con un record per ogni mossa giocata
+let currentRowEl = null;   // riga (bianco+nero) attualmente in costruzione
 
 // ---------------------------------------------------------------------------
 // Riferimenti al DOM
@@ -29,6 +31,7 @@ const moveListEl = document.getElementById('moveList');
 const evalFillEl = document.getElementById('evalFill');
 const evalScoreEl = document.getElementById('evalScore');
 const evalBarWrapEl = document.getElementById('evalBarWrap');
+const moveListInnerEl = document.getElementById('moveListInner');
 
 function setEngineStatus(text) {
   engineStatusEl.textContent = text;
@@ -203,7 +206,14 @@ async function processMove(moveObj, fenBefore, fenAfter) {
 
   const classification = classifyMove(centipawnLoss, isBestMove);
 
-  addMoveToList(moveObj, bestSan, classification, isBestMove);
+  const listRefs = addMoveToList(moveObj, bestSan, classification, isBestMove);
+  plyHistory.push({
+    rowEl: listRefs.rowEl,
+    itemEl: listRefs.itemEl,
+    createdRow: listRefs.createdRow,
+    evalScoreBefore: beforeAnalysis.score,
+    evalSideBefore: moveObj.color
+  });
   updateEvalBar(afterAnalysis.score, chess.turn());
 
   if (chess.isGameOver()) {
@@ -252,8 +262,18 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove) {
 
   item.appendChild(header);
   item.appendChild(detail);
-  moveListEl.appendChild(item);
-  moveListEl.scrollTop = moveListEl.scrollHeight;
+
+  let createdRow = false;
+  if (isWhiteMove || !currentRowEl) {
+    currentRowEl = document.createElement('div');
+    currentRowEl.className = 'move-row';
+    moveListInnerEl.prepend(currentRowEl);   // in cima, non in coda: è la "pila"
+    createdRow = true;
+  }
+  currentRowEl.appendChild(item);
+  moveListEl.scrollTop = 0;
+
+  return { rowEl: currentRowEl, itemEl: item, createdRow };
 }
 
 // ---------------------------------------------------------------------------
@@ -429,6 +449,8 @@ function newGame() {
   plyCount = 0;
   clearSelection();
   moveListEl.innerHTML = '';
+  plyHistory = [];
+  currentRowEl = null;
   updateEvalBar({ cp: 0 }, 'w');
   boardLocked = true;
   setEngineStatus('Nuova partita. Calcolo la posizione iniziale…');
@@ -443,9 +465,19 @@ function undoMove() {
   if (!undone) return;
   board.position(chess.fen());
   clearSelection();
-  currentAnalysis = null; // la cache non è più valida: verrà ricalcolata alla prossima mossa
+  currentAnalysis = null;
   plyCount = Math.max(0, plyCount - 1);
-  if (moveListEl.lastElementChild) moveListEl.lastElementChild.remove();
+
+  const entry = plyHistory.pop();
+  if (entry) {
+    entry.itemEl.remove();
+    if (entry.createdRow) {
+      entry.rowEl.remove();
+      currentRowEl = plyHistory.length ? plyHistory[plyHistory.length - 1].rowEl : null;
+    }
+    updateEvalBar(entry.evalScoreBefore, entry.evalSideBefore);
+  }
+
   setEngineStatus('Mossa annullata. Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
 }
 
