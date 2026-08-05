@@ -448,7 +448,7 @@ function newGame() {
   currentAnalysis = null;
   plyCount = 0;
   clearSelection();
-  moveListEl.innerHTML = '';
+  moveListInnerEl.innerHTML = '';
   plyHistory = [];
   currentRowEl = null;
   updateEvalBar({ cp: 0 }, 'w');

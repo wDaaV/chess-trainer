@@ -218,6 +218,38 @@ body {
   justify-content: center;
 }
 
+/* --- Solo desktop: tutto su un'unica riga, spaziatura uniforme --- */
+@media (min-width: 641px) {
+  .controls {
+    flex-wrap: nowrap;
+    justify-content: space-evenly; /* stessa distanza tra elementi/bordi, a partire dal centro */
+  }
+
+  .controls-row {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .controls-row-buttons,
+  .controls-row-depth {
+    flex: 0 0 auto;
+    justify-content: space-evenly;
+  }
+
+  .controls-row-buttons button {
+    flex: 0 0 auto;      /* il bottone si adatta al proprio testo, non si allarga */
+    white-space: nowrap; /* "Annulla mossa" resta su una sola riga */
+  }
+
+  .depth-control {
+    width: auto;
+  }
+
+  .depth-control select {
+    flex: 0 0 auto;
+  }
+}
+
 .controls button,
 .controls select {
   background: #14171c;
@@ -241,13 +273,6 @@ body {
 }
 
 .panel-section h2 { margin-top: 0; font-size: 18px; }
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
-}
 
 /* Intestazione delle due colonne Bianco / Nero */
 .move-list-header {
