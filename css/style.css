@@ -5,7 +5,7 @@
   --text: #e8eaed;
   --muted: #9aa3b2;
   --accent: #4f8cff;
-
+  --book: #d5a47d;
   --best: #4caf50;
   --good: #8bc34a;
   --inaccuracy: #ffc107;
@@ -23,8 +23,18 @@ body {
 }
 
 .site-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   padding: 24px 16px 32px;
+  gap: 10px;
+}
+
+.site-logo {
+  width: 128px;
+  height: 128px;
+  object-fit: contain;
 }
 
 .site-header h1 { margin: 0; }
@@ -56,6 +66,13 @@ body {
 }
 
 .board {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.board-shell {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
@@ -220,6 +237,12 @@ body {
 
 /* --- Solo desktop: tutto su un'unica riga, spaziatura uniforme --- */
 @media (min-width: 641px) {
+
+  .panel-section {
+    flex: 1 1 700px;   /* più spazio di base assegnato dal flexbox */
+    max-width: 720px;  /* limite massimo alzato, la scacchiera resta invariata */
+  }
+
   .controls {
     flex-wrap: nowrap;
     justify-content: space-evenly; /* stessa distanza tra elementi/bordi, a partire dal centro */
@@ -349,6 +372,7 @@ body {
 .move-item.inaccuracy { border-left-color: var(--inaccuracy); }
 .move-item.mistake { border-left-color: var(--mistake); }
 .move-item.blunder { border-left-color: var(--blunder); }
+.move-item.book { border-left-color: var(--book); }
 
 .move-item-header {
   display: flex;
@@ -379,6 +403,7 @@ body {
 .badge.inaccuracy { background: var(--inaccuracy); }
 .badge.mistake { background: var(--mistake); }
 .badge.blunder { background: var(--blunder); }
+.badge.book { background: var(--book); }
 
 .site-footer {
   text-align: center;
@@ -437,8 +462,67 @@ body {
   border: 1px solid var(--border);
   color: var(--accent);
   font-weight: 700;
-  font-size: 12px;
-  font-family: "Courier New", monospace;
+  font-size: 13px; 
+  font-family: "Consolas", "SF Mono", "Roboto Mono", monospace;
 }
 
 .notation-desc { color: var(--muted); }
+
+.checkmate-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 12, 16, 0.42);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 220ms ease, visibility 220ms ease;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.checkmate-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.checkmate-overlay-content {
+  text-align: center;
+  padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(20, 23, 28, 0.88);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.checkmate-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.checkmate-subtitle {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.board-shell.checkmate-shake {
+  animation: checkmate-shake 320ms ease;
+}
+
+@keyframes checkmate-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX(5px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+
+.square-55d63.checkmated-king {
+  box-shadow: inset 0 0 0 9999px rgba(209, 16, 3, 0.34);
+}

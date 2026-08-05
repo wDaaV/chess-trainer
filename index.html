@@ -12,12 +12,16 @@
     integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
     crossorigin="anonymous">
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
   <header class="site-header">
-    <h1>♟️ Chess Trainer</h1>
+    <img src="img/chess-trainer-logo.png" alt="Chess Trainer" class="site-logo">
+    <h1>Chess Trainer</h1>
   </header>
 
   <main class="container">
@@ -30,7 +34,16 @@
           <span id="evalScore">0.00</span>
         </div>
 
-        <div id="board" class="board"></div>
+        <div class="board-shell" id="boardShell">
+          <div id="board" class="board"></div>
+
+          <div id="checkmateOverlay" class="checkmate-overlay" aria-hidden="true">
+            <div class="checkmate-overlay-content">
+              <div class="checkmate-title">Scacco matto</div>
+              <div id="checkmateSubtitle" class="checkmate-subtitle"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <p id="engineStatus" class="status">Caricamento del motore Stockfish…</p>
@@ -76,6 +89,7 @@
       </div>
 
       <h2>Analisi delle mosse</h2>
+      <h4 id="openingName" class="opening-name"></h4>
       <div class="move-list-header">
         <span>Bianco</span>
         <span>Nero</span>
@@ -89,7 +103,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>Motore: Stockfish 18 (WebAssembly, eseguito localmente nel browser). Nessun dato viene inviato a un server.</p>
+    <p>Motore: Stockfish 18 lite(WebAssembly, eseguito localmente nel browser). Nessun dato viene inviato a un server.</p>
   </footer>
 
   <!-- jQuery e chessboard.js: librerie "classiche", devono essere caricate prima del modulo dell'app -->

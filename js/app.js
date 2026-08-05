@@ -22,6 +22,39 @@ let lastEvalScore = { cp: 0 };   // ultimo punteggio ricevuto dal motore (per ri
 let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
 let plyHistory = [];       // pila con un record per ogni mossa giocata
 let currentRowEl = null;   // riga (bianco+nero) attualmente in costruzione
+let currentOpeningName = '';
+
+// ---------------------------------------------------------------------------
+// Database delle aperture (mosse "da libro")
+// ---------------------------------------------------------------------------
+let openingsBook = null; // mappa EPD -> { eco, name }, popolata al caricamento
+
+async function loadOpeningsBook() {
+  try {
+    const res = await fetch('engine/openings.json');
+    openingsBook = await res.json();
+  } catch (err) {
+    console.error('Impossibile caricare il database delle aperture:', err);
+    openingsBook = {}; // fallback: nessuna mossa verrà riconosciuta come "da libro"
+  }
+}
+
+// Riduce un FEN completo alla sua parte "EPD" (board, turno, arrocchi, en-passant),
+// scartando i contatori di semi-mosse/mosse che non influenzano l'identità della
+// posizione agli effetti del riconoscimento dell'apertura.
+function toEpd(fen) {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
+// Restituisce { eco, name } se la posizione raggiunta dopo la mossa è nel
+// database delle aperture, altrimenti null. Il controllo è sulla posizione
+// "dopo" la mossa perché openings.json indicizza le posizioni risultanti
+// da una linea di teoria nota.
+function isBookMove(fenAfter) {
+  if (!openingsBook) return null;
+  const epd = toEpd(fenAfter);
+  return openingsBook[epd] || null;
+}
 
 // ---------------------------------------------------------------------------
 // Riferimenti al DOM
@@ -32,9 +65,35 @@ const evalFillEl = document.getElementById('evalFill');
 const evalScoreEl = document.getElementById('evalScore');
 const evalBarWrapEl = document.getElementById('evalBarWrap');
 const moveListInnerEl = document.getElementById('moveListInner');
+const openingNameEl = document.getElementById('openingName');
+const boardShellEl = document.getElementById('boardShell');
+const checkmateOverlayEl = document.getElementById('checkmateOverlay');
+const checkmateSubtitleEl = document.getElementById('checkmateSubtitle');
 
 function setEngineStatus(text) {
   engineStatusEl.textContent = text;
+}
+
+function clearCheckmateEffects() {
+  if (checkmateOverlayEl) {
+    checkmateOverlayEl.classList.remove('visible');
+    checkmateOverlayEl.setAttribute('aria-hidden', 'true');
+  }
+
+  if (checkmateSubtitleEl) {
+    checkmateSubtitleEl.textContent = '';
+  }
+
+  if (boardShellEl) {
+    boardShellEl.classList.remove('checkmate-shake');
+  }
+
+  $('#board .square-55d63').removeClass('checkmated-king');
+}
+
+function setOpeningName(name) {
+  currentOpeningName = name || '';
+  if (openingNameEl) openingNameEl.textContent = currentOpeningName;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +171,15 @@ function scoreToCp(score) {
   return score.cp;
 }
 
+// Converte un vantaggio in centipedoni in probabilità di vittoria del lato
+// che sta valutando la posizione. La funzione sigmoide comprime i valori
+// estremi: differenze enormi in posizioni già vinte valgono poco in termini
+// pratici, mentre piccole differenze vicino all'equilibrio pesano di più.
+function cpToWinProbability(cp) {
+  const clamped = Math.max(-1000, Math.min(1000, cp));
+  return 1 / (1 + Math.pow(10, -clamped / 400));
+}
+
 // Formatta un punteggio per la visualizzazione (es. "+0.35" oppure "#+3").
 // sideToMove: 'w' o 'b', il colore a cui è riferito lo score (chi deve muovere in quella posizione).
 // flipped: se true, il punteggio viene riferito al lato in basso sulla scacchiera
@@ -163,12 +231,14 @@ function uciToSan(fen, uciMove) {
   }
 }
 
-// Classifica la mossa in base alla perdita in centipedoni rispetto alla mossa migliore
-function classifyMove(centipawnLoss, isBestMove) {
-  if (isBestMove || centipawnLoss < 10) return { label: 'Ottima mossa', css: 'best' };
-  if (centipawnLoss < 25) return { label: 'Buona mossa', css: 'good' };
-  if (centipawnLoss < 50) return { label: 'Imprecisione', css: 'inaccuracy' };
-  if (centipawnLoss < 100) return { label: 'Errore', css: 'mistake' };
+// Classifica la mossa in base alla perdita di probabilità di vittoria
+// (valore tra 0 e 1) invece che alla perdita lineare in centipedoni.
+function classifyMove(winProbLoss, isBestMove, isBook) {
+  if (isBook) return { label: 'Mossa da libro', css: 'book' };
+  if (isBestMove || winProbLoss < 0.02) return { label: 'Ottima mossa', css: 'best' };
+  if (winProbLoss < 0.06) return { label: 'Buona mossa', css: 'good' };
+  if (winProbLoss < 0.12) return { label: 'Imprecisione', css: 'inaccuracy' };
+  if (winProbLoss < 0.22) return { label: 'Errore', css: 'mistake' };
   return { label: 'Errore grave', css: 'blunder' };
 }
 
@@ -195,16 +265,23 @@ async function processMove(moveObj, fenBefore, fenAfter) {
   const afterAnalysis = await analyzePosition(fenAfter, analysisDepth);
   currentAnalysis = afterAnalysis;
 
-  // Valutazioni, entrambe riportate al punto di vista di chi ha mosso
   const cpBeforeFromMover = scoreToCp(beforeAnalysis.score);
   const cpAfterFromMover = -scoreToCp(afterAnalysis.score);
-  const centipawnLoss = Math.max(0, cpBeforeFromMover - cpAfterFromMover);
+
+  const winProbBefore = cpToWinProbability(cpBeforeFromMover);
+  const winProbAfter = cpToWinProbability(cpAfterFromMover);
+  const winProbLoss = Math.max(0, winProbBefore - winProbAfter);
 
   const bestSan = uciToSan(fenBefore, beforeAnalysis.bestMoveUci);
   const playedUci = moveObj.from + moveObj.to + (moveObj.promotion || '');
   const isBestMove = playedUci === beforeAnalysis.bestMoveUci;
 
-  const classification = classifyMove(centipawnLoss, isBestMove);
+  const bookInfo = isBookMove(fenAfter);
+  const classification = classifyMove(winProbLoss, isBestMove, !!bookInfo);
+  if (bookInfo) {
+    classification.openingName = bookInfo.name;
+    setOpeningName(bookInfo.name);
+  }
 
   const listRefs = addMoveToList(moveObj, bestSan, classification, isBestMove);
   plyHistory.push({
@@ -212,14 +289,22 @@ async function processMove(moveObj, fenBefore, fenAfter) {
     itemEl: listRefs.itemEl,
     createdRow: listRefs.createdRow,
     evalScoreBefore: beforeAnalysis.score,
-    evalSideBefore: moveObj.color
+    evalSideBefore: moveObj.color,
+    openingNameAfter: currentOpeningName
   });
   updateEvalBar(afterAnalysis.score, chess.turn());
 
-  if (chess.isGameOver()) {
+  if (chess.isCheckmate()) {
+    showCheckmateEffects();
     setEngineStatus(getGameOverText());
   } else {
-    setEngineStatus('Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
+    clearCheckmateEffects();
+
+    if (chess.isGameOver()) {
+      setEngineStatus(getGameOverText());
+    } else {
+      setEngineStatus('Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
+    }
   }
 
   boardLocked = false;
@@ -256,9 +341,17 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove) {
 
   const detail = document.createElement('div');
   detail.className = 'move-item-detail';
-  detail.textContent = isBestMove
-    ? 'Hai giocato la mossa migliore secondo Stockfish.'
-    : 'Mossa migliore secondo Stockfish: ' + bestSan;
+  if (classification.css === 'book') {
+    detail.textContent = 'Mossa teorica';
+  } else if (isBestMove) {
+    detail.textContent = 'Hai giocato la mossa migliore secondo Stockfish';
+  } else {
+    detail.textContent = 'Mossa migliore secondo Stockfish: ' + bestSan;
+  }
+  //versione alternativa semplice
+  //detail.textContent = isBestMove
+    //? 'Hai giocato la mossa migliore secondo Stockfish.'
+    //: 'Mossa migliore secondo Stockfish: ' + bestSan;
 
   item.appendChild(header);
   item.appendChild(detail);
@@ -322,6 +415,54 @@ function selectSquare(square) {
 function pieceColorAt(square) {
   const piece = chess.get(square);
   return piece ? piece.color : null;
+}
+
+function findKingSquare(color) {
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
+  for (const rank of ranks) {
+    for (const file of files) {
+      const square = file + rank;
+      const piece = chess.get(square);
+      if (piece && piece.type === 'k' && piece.color === color) {
+        return square;
+      }
+    }
+  }
+  return null;
+}
+
+function showCheckmateEffects() {
+  clearCheckmateEffects();
+
+  const loser = chess.turn();
+  const winner = loser === 'w' ? 'Nero' : 'Bianco';
+  const kingSquare = findKingSquare(loser);
+
+  if (checkmateSubtitleEl) {
+    checkmateSubtitleEl.textContent = 'Vince il ' + winner + '.';
+  }
+
+  if (checkmateOverlayEl) {
+    checkmateOverlayEl.classList.add('visible');
+    checkmateOverlayEl.setAttribute('aria-hidden', 'false');
+  }
+
+  if (kingSquare) {
+    $(squareSelector(kingSquare)).addClass('checkmated-king');
+  }
+
+  if (boardShellEl) {
+    void boardShellEl.offsetWidth;
+    boardShellEl.classList.add('checkmate-shake');
+  }
+}
+
+if (boardShellEl) {
+  boardShellEl.addEventListener('animationend', () => {
+    boardShellEl.classList.remove('checkmate-shake');
+  });
 }
 
 // Esegue la mossa (usata dal click-to-move; il drag-and-drop usa invece
@@ -444,6 +585,7 @@ function onSnapEnd() {
 
 function newGame() {
   chess.reset();
+  clearCheckmateEffects();
   board.start();
   currentAnalysis = null;
   plyCount = 0;
@@ -451,6 +593,7 @@ function newGame() {
   moveListInnerEl.innerHTML = '';
   plyHistory = [];
   currentRowEl = null;
+  setOpeningName('');
   updateEvalBar({ cp: 0 }, 'w');
   boardLocked = true;
   setEngineStatus('Nuova partita. Calcolo la posizione iniziale…');
@@ -461,6 +604,7 @@ function newGame() {
 }
 
 function undoMove() {
+  clearCheckmateEffects();
   const undone = chess.undo();
   if (!undone) return;
   board.position(chess.fen());
@@ -477,6 +621,9 @@ function undoMove() {
     }
     updateEvalBar(entry.evalScoreBefore, entry.evalSideBefore);
   }
+
+  const lastEntry = plyHistory.length ? plyHistory[plyHistory.length - 1] : null;
+  setOpeningName(lastEntry ? lastEntry.openingNameAfter : '');
 
   setEngineStatus('Mossa annullata. Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
 }
@@ -525,9 +672,20 @@ document.getElementById('depthSelect').addEventListener('change', (e) => {
   currentAnalysis = null; // ricalcola con la nuova profondità dalla prossima mossa
 });
 
-engineReadyPromise.then(async () => {
+Promise.all([engineReadyPromise, loadOpeningsBook()]).then(async () => {
   setEngineStatus('Motore pronto. Calcolo la posizione iniziale…');
   await ensureInitialAnalysis();
   boardLocked = false;
   setEngineStatus('Muove il bianco.');
 });
+
+/*
+//versione senza Promise
+loadOpeningsBook(); // non bloccante: se non è ancora pronto, isBookMove ritorna null finché il fetch non termina
+
+engineReadyPromise.then(async () => {
+  setEngineStatus('Motore pronto. Calcolo la posizione iniziale…');
+  await ensureInitialAnalysis();
+  boardLocked = false;
+  setEngineStatus('Muove il bianco.');
+});*/
