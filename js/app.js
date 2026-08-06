@@ -18,6 +18,9 @@ let plyCount = 0;
 let boardFlipped = false;    // tiene traccia dell'orientamento corrente della scacchiera
 let selectedSquare = null;   // casella del pezzo selezionato per il "click-to-move"
 let wasAlreadySelected = false; // vedi onDragStart/onDrop: distingue un "click" di nuova selezione da un "click" di deselezione sullo stesso pezzo già selezionato
+let arrows = [];             // frecce di annotazione disegnate col tasto destro: [{ from, to }, ...]
+let arrowDragStart = null;   // casella di partenza durante un trascinamento col tasto destro, null se non in corso
+let arrowLayerEl = null;     // elemento <svg> sovrapposto alla scacchiera su cui vengono disegnate le frecce
 let lastEvalScore = { cp: 0 };   // ultimo punteggio ricevuto dal motore (per ricalcolo al flip)
 let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
 let plyHistory = [];       // pila con un record per ogni mossa giocata
@@ -283,15 +286,17 @@ async function processMove(moveObj, fenBefore, fenAfter) {
     setOpeningName(bookInfo.name);
   }
 
-  const listRefs = addMoveToList(moveObj, bestSan, classification, isBestMove);
+  const listRefs = addMoveToList(moveObj, bestSan, classification, isBestMove, beforeAnalysis.bestMoveUci);
   plyHistory.push({
     rowEl: listRefs.rowEl,
     itemEl: listRefs.itemEl,
     createdRow: listRefs.createdRow,
     evalScoreBefore: beforeAnalysis.score,
     evalSideBefore: moveObj.color,
-    openingNameAfter: currentOpeningName
+    openingNameAfter: currentOpeningName,
+    fenBefore: fenBefore   // posizione esatta da cui ripartire se si clicca il link di questa mossa
   });
+
   updateEvalBar(afterAnalysis.score, chess.turn());
 
   if (chess.isCheckmate()) {
@@ -322,8 +327,10 @@ function getGameOverText() {
 // ---------------------------------------------------------------------------
 // Pannello elenco mosse (due colonne: bianco / nero)
 // ---------------------------------------------------------------------------
-function addMoveToList(moveObj, bestSan, classification, isBestMove) {
+function addMoveToList(moveObj, bestSan, classification, isBestMove, bestMoveUci) {
   plyCount++;
+  const thisPly = plyCount; // "istantanea" della posizione nello storico: serve per verificare
+                             // in seguito che questa sia ancora l'ultima mossa giocata
   const moveNumber = Math.ceil(plyCount / 2);
   const isWhiteMove = moveObj.color === 'w';
 
@@ -346,14 +353,21 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove) {
   } else if (isBestMove) {
     detail.textContent = 'Hai giocato la mossa migliore secondo Stockfish';
   } else {
-    detail.textContent = 'Mossa migliore secondo Stockfish: ' + bestSan;
-  }
-  //versione alternativa semplice
-  //detail.textContent = isBestMove
-    //? 'Hai giocato la mossa migliore secondo Stockfish.'
-    //: 'Mossa migliore secondo Stockfish: ' + bestSan;
+    detail.textContent = 'Mossa migliore secondo Stockfish: ';
 
-  item.appendChild(header);
+    const link = document.createElement('a');
+    link.href = '#';
+    link.className = 'best-move-link';
+    link.textContent = bestSan;
+    link.title = 'Clicca per giocare questa mossa al posto di quella effettuata (le eventuali mosse successive verranno scartate)';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      jumpAndReplay(thisPly, bestMoveUci);
+    });
+    detail.appendChild(link);
+  }
+
+   item.appendChild(header);
   item.appendChild(detail);
 
   let createdRow = false;
@@ -367,6 +381,58 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove) {
   moveListEl.scrollTop = 0;
 
   return { rowEl: currentRowEl, itemEl: item, createdRow };
+}
+
+// Torna alla posizione presente PRIMA della mossa numero "thisPly" (1 = prima
+// mossa della partita), scarta quella mossa e tutte quelle giocate dopo di
+// essa, e gioca al loro posto la mossa suggerita da Stockfish (bestMoveUci).
+// A differenza della vecchia replayWithBestMove, funziona da QUALUNQUE blocco
+// di analisi, non solo dall'ultimo: i link restano quindi sempre cliccabili,
+// anche su mosse ormai "nel passato" della partita.
+function jumpAndReplay(thisPly, bestMoveUci) {
+  if (boardLocked) return;
+  if (thisPly < 1 || thisPly > plyHistory.length) return;
+  if (!bestMoveUci || bestMoveUci.length < 4) return;
+
+  // La mossa che stiamo per scartare: da qui recuperiamo il FEN e la
+  // valutazione "prima" di essa, verso cui riportare partita e barra di eval.
+  const cutEntry = plyHistory[thisPly - 1];
+  const fenBefore = cutEntry.fenBefore;
+  const evalBefore = cutEntry.evalScoreBefore;
+  const evalSideBefore = cutEntry.evalSideBefore;
+
+  clearCheckmateEffects();
+  clearSelection();
+  clearArrows();
+
+  // Rimuove dallo storico (e dal DOM) la mossa "thisPly" e tutte quelle
+  // giocate dopo, esattamente come farebbe undoMove() ripetuto più volte:
+  // stessa logica di gestione delle righe bianco/nero, solo in un ciclo.
+  while (plyHistory.length >= thisPly) {
+    const entry = plyHistory.pop();
+    entry.itemEl.remove();
+    if (entry.createdRow) {
+      entry.rowEl.remove();
+    }
+  }
+  currentRowEl = plyHistory.length ? plyHistory[plyHistory.length - 1].rowEl : null;
+  plyCount = plyHistory.length;
+
+  const lastEntry = plyHistory.length ? plyHistory[plyHistory.length - 1] : null;
+  setOpeningName(lastEntry ? lastEntry.openingNameAfter : '');
+
+  // Ricarica chess.js e la scacchiera sulla posizione "prima" della mossa
+  // scartata. Niente animazione (secondo parametro "false"): è un salto a un
+  // punto qualsiasi della partita, non lo spostamento di un singolo pezzo.
+  chess.load(fenBefore);
+  board.position(chess.fen(), false);
+  updateEvalBar(evalBefore, evalSideBefore);
+
+  currentAnalysis = null; // la cache non è più valida: la posizione è cambiata
+
+  const from = bestMoveUci.slice(0, 2);
+  const to = bestMoveUci.slice(2, 4);
+  attemptMove(from, to); // rientra nella normale pipeline (processMove) da qui in poi
 }
 
 // ---------------------------------------------------------------------------
@@ -402,6 +468,7 @@ function clearSelection() {
 // sia al click su un proprio pezzo.
 function selectSquare(square) {
   clearHighlights();
+  clearArrows();
   selectedSquare = square;
   $(squareSelector(square)).addClass('move-hint-selected');
 
@@ -463,6 +530,122 @@ if (boardShellEl) {
   boardShellEl.addEventListener('animationend', () => {
     boardShellEl.classList.remove('checkmate-shake');
   });
+}
+
+// ---------------------------------------------------------------------------
+// Frecce di annotazione (tasto destro + trascinamento), stile wintrchess/lichess
+// ---------------------------------------------------------------------------
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function createArrowLayer() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('id', 'arrowLayer');
+  svg.setAttribute('class', 'arrow-layer');
+  boardShellEl.appendChild(svg);
+  return svg;
+}
+
+// Centro in pixel di una casella, relativo a boardShellEl (lo stesso contenitore
+// a cui è agganciato l'overlay delle frecce e l'overlay di scacco matto).
+function squareCenterPx(square) {
+  const el = document.querySelector(squareSelector(square));
+  if (!el) return null;
+  const shellRect = boardShellEl.getBoundingClientRect();
+  const sqRect = el.getBoundingClientRect();
+  return {
+    x: sqRect.left - shellRect.left + sqRect.width / 2,
+    y: sqRect.top - shellRect.top + sqRect.height / 2
+  };
+}
+
+// Disegna l'intera freccia (stelo + punta) come UN UNICO poligono, invece di
+// una linea (stelo) più un triangolo (punta) sovrapposti: con due forme
+// distinte, l'estremità arrotondata dello stelo (stroke-linecap: round)
+// sporgeva leggermente oltre i bordi retti della base del triangolo,
+// creando uno stacco visibile nel punto di giunzione. Un'unica forma piena
+// elimina del tutto la sovrapposizione.
+function drawArrowShape(svg, p1, p2) {
+  const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+  const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  if (dist < 4) return; // trascinamento troppo corto: non disegnare nulla
+
+  const headLength = 32;
+  const headWidth = 30;
+  const shaftWidth = 14; // stesso spessore che prima era impostato via CSS (stroke-width)
+
+  // Direzione perpendicolare alla freccia, usata per "allargare" stelo e punta
+  // ai due lati della linea centrale p1->p2.
+  const perpX = Math.cos(angle + Math.PI / 2);
+  const perpY = Math.sin(angle + Math.PI / 2);
+
+  const shaftHalf = shaftWidth / 2;
+  const headHalf = headWidth / 2;
+
+  const tip = { x: p1.x + Math.cos(angle) * dist, y: p1.y + Math.sin(angle) * dist };
+  const headBaseDist = Math.max(0, dist - headLength);
+  const headBase = {
+    x: p1.x + Math.cos(angle) * headBaseDist,
+    y: p1.y + Math.sin(angle) * headBaseDist
+  };
+
+  // Contorno del poligono, in ordine: partenza (lato sx) → base punta (lato
+  // sx, stretta come lo stelo) → base punta allargata (lato sx) → punta →
+  // base punta allargata (lato dx) → base punta (lato dx) → partenza (lato dx)
+  const points = [
+    { x: p1.x - perpX * shaftHalf, y: p1.y - perpY * shaftHalf },
+    { x: headBase.x - perpX * shaftHalf, y: headBase.y - perpY * shaftHalf },
+    { x: headBase.x - perpX * headHalf, y: headBase.y - perpY * headHalf },
+    tip,
+    { x: headBase.x + perpX * headHalf, y: headBase.y + perpY * headHalf },
+    { x: headBase.x + perpX * shaftHalf, y: headBase.y + perpY * shaftHalf },
+    { x: p1.x + perpX * shaftHalf, y: p1.y + perpY * shaftHalf }
+  ];
+
+  const arrow = document.createElementNS(SVG_NS, 'polygon');
+  arrow.setAttribute('points', points.map((p) => `${p.x},${p.y}`).join(' '));
+  arrow.setAttribute('class', 'arrow-shape');
+  svg.appendChild(arrow);
+}
+
+// Ridisegna tutte le frecce salvate (chiamata dopo ogni modifica all'array "arrows"
+// e ad ogni resize/ridimensionamento della scacchiera).
+function renderArrows() {
+  if (!arrowLayerEl) return;
+  const rect = boardShellEl.getBoundingClientRect();
+  arrowLayerEl.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+  arrowLayerEl.innerHTML = '';
+  arrows.forEach((a) => {
+    const p1 = squareCenterPx(a.from);
+    const p2 = squareCenterPx(a.to);
+    if (p1 && p2) drawArrowShape(arrowLayerEl, p1, p2);
+  });
+}
+
+// Disegna, oltre alle frecce salvate, anche l'anteprima "live" durante il trascinamento
+function updateTempArrow(clientX, clientY) {
+  renderArrows();
+  const p1 = squareCenterPx(arrowDragStart);
+  if (!p1) return;
+  const shellRect = boardShellEl.getBoundingClientRect();
+  const p2 = { x: clientX - shellRect.left, y: clientY - shellRect.top };
+  drawArrowShape(arrowLayerEl, p1, p2);
+}
+
+// Aggiunge la freccia from->to, oppure la rimuove se esiste già (toggle)
+function toggleArrow(from, to) {
+  const idx = arrows.findIndex((a) => a.from === from && a.to === to);
+  if (idx !== -1) {
+    arrows.splice(idx, 1);
+  } else {
+    arrows.push({ from, to });
+  }
+  renderArrows();
+}
+
+function clearArrows() {
+  if (arrows.length === 0) return;
+  arrows = [];
+  renderArrows();
 }
 
 // Esegue la mossa (usata dal click-to-move; il drag-and-drop usa invece
@@ -590,6 +773,7 @@ function newGame() {
   currentAnalysis = null;
   plyCount = 0;
   clearSelection();
+  clearArrows();
   moveListInnerEl.innerHTML = '';
   plyHistory = [];
   currentRowEl = null;
@@ -609,6 +793,7 @@ function undoMove() {
   if (!undone) return;
   board.position(chess.fen());
   clearSelection();
+  clearArrows();
   currentAnalysis = null;
   plyCount = Math.max(0, plyCount - 1);
 
@@ -637,6 +822,7 @@ function flipBoard() {
   boardFlipped = !boardFlipped;
   evalBarWrapEl.classList.toggle('flipped', boardFlipped);
   clearSelection();
+  clearArrows();
   updateEvalBar(lastEvalScore, lastEvalSideToMove);
   requestAnimationFrame(() => board.resize());
 }
@@ -662,7 +848,59 @@ $('#board').on('click', '.square-55d63', function () {
   if (square) handleSquareClick(square);
 });
 
-window.addEventListener('resize', () => board.resize());
+// --- Frecce di annotazione: tasto destro + trascinamento -------------------
+// --- Frecce di annotazione: tasto destro + trascinamento -------------------
+arrowLayerEl = createArrowLayer();
+
+const boardEl = document.getElementById('board');
+
+// Blocca il menu contestuale nativo del browser sulla scacchiera.
+boardEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// IMPORTANTE: chessboard.js avvia il proprio drag-and-drop dei pezzi da un
+// listener "mousedown" registrato sui pezzi stessi, SENZA distinguere il
+// tasto premuto (tratta ogni mousedown come un click sinistro). Per evitare
+// che un mousedown col tasto destro venga intercettato anche da chessboard.js
+// (che sposterebbe il pezzo), lo catturiamo in fase di "capture" — prima che
+// l'evento raggiunga il listener di chessboard.js sul pezzo — e, se è il
+// tasto destro, blocchiamo del tutto la propagazione: chessboard.js non vede
+// mai l'evento e il pezzo non si muove.
+boardEl.addEventListener('mousedown', (e) => {
+  if (e.button !== 2) return; // il tasto sinistro prosegue normalmente verso chessboard.js
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  const squareEl = e.target.closest('.square-55d63');
+  const square = squareEl ? squareFromElement(squareEl) : null;
+  if (square) arrowDragStart = square;
+}, true); // true = fase di cattura, eseguita prima dei listener di chessboard.js
+
+$(document).on('mousemove', (e) => {
+  if (!arrowDragStart) return;
+  updateTempArrow(e.clientX, e.clientY);
+});
+
+$(document).on('mouseup', (e) => {
+  if (!arrowDragStart) return;
+  const start = arrowDragStart;
+  arrowDragStart = null;
+
+  const elAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+  const squareEl = elAtPoint ? elAtPoint.closest('.square-55d63') : null;
+  const targetSquare = squareEl ? squareFromElement(squareEl) : null;
+
+  if (targetSquare && targetSquare !== start) {
+    toggleArrow(start, targetSquare);
+  } else {
+    renderArrows(); // rimuove solo l'anteprima temporanea, le frecce salvate restano
+  }
+});
+
+window.addEventListener('resize', () => {
+  board.resize();
+  renderArrows();
+});
 
 document.getElementById('newGameBtn').addEventListener('click', newGame);
 document.getElementById('undoBtn').addEventListener('click', undoMove);

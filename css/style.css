@@ -389,6 +389,21 @@ body {
   color: var(--muted);
 }
 
+.best-move-link {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  cursor: pointer;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.best-move-link:hover,
+.best-move-link:focus-visible {
+  color: #ffffff;
+  text-decoration-color: currentColor;
+}
+
 .badge {
   display: inline-block;
   font-size: 11px;
@@ -467,6 +482,20 @@ body {
 }
 
 .notation-desc { color: var(--muted); }
+
+.arrow-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* le frecce non devono intercettare i click sulla scacchiera */
+  z-index: 15;           /* sopra ai move-hint (z-index 5), sotto all'overlay di scacco matto (20) */
+}
+
+.arrow-shape {
+  fill: rgba(255, 170, 0, 0.65);
+  stroke: none;
+}
 
 .checkmate-overlay {
   position: absolute;
