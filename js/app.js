@@ -72,6 +72,43 @@ const openingNameEl = document.getElementById('openingName');
 const boardShellEl = document.getElementById('boardShell');
 const checkmateOverlayEl = document.getElementById('checkmateOverlay');
 const checkmateSubtitleEl = document.getElementById('checkmateSubtitle');
+const capturedWrapEl = document.getElementById('capturedWrap');
+const capturedByWhiteEl = document.getElementById('capturedByWhite');
+const capturedByBlackEl = document.getElementById('capturedByBlack');
+
+const WHITE_GLYPHS = { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕' };
+const BLACK_GLYPHS = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
+const CAPTURE_ORDER = { p: 1, n: 2, b: 3, r: 4, q: 5 };
+
+function renderCapturedTray(container, pieceTypes, glyphMap) {
+  if (!container) return;
+  container.innerHTML = '';
+  pieceTypes.forEach((type) => {
+    const span = document.createElement('span');
+    span.className = 'captured-piece';
+    span.textContent = glyphMap[type] || '';
+    container.appendChild(span);
+  });
+}
+
+// Ricalcola da zero i pezzi mangiati leggendo lo storico di chess.js:
+// funziona automaticamente anche dopo "Annulla mossa" o "jumpAndReplay",
+// senza bisogno di tenere contatori manuali da tenere sincronizzati.
+function updateCapturedPieces() {
+  const history = chess.history({ verbose: true });
+  const capturedByWhite = []; // pezzi neri catturati dal bianco
+  const capturedByBlack = []; // pezzi bianchi catturati dal nero
+
+  history.forEach((m) => {
+    if (!m.captured) return;
+    if (m.color === 'w') capturedByWhite.push(m.captured);
+    else capturedByBlack.push(m.captured);
+  });
+
+  const byValue = (a, b) => CAPTURE_ORDER[a] - CAPTURE_ORDER[b];
+  renderCapturedTray(capturedByWhiteEl, capturedByWhite.sort(byValue), BLACK_GLYPHS);
+  renderCapturedTray(capturedByBlackEl, capturedByBlack.sort(byValue), WHITE_GLYPHS);
+}
 
 function setEngineStatus(text) {
   engineStatusEl.textContent = text;
@@ -256,6 +293,7 @@ async function ensureInitialAnalysis() {
 
 async function processMove(moveObj, fenBefore, fenAfter) {
   boardLocked = true;
+  updateCapturedPieces();
   setEngineStatus('Stockfish sta analizzando la mossa…');
 
   // Analisi "prima" della mossa (di solito già in cache dalla mossa precedente)
@@ -426,6 +464,7 @@ function jumpAndReplay(thisPly, bestMoveUci) {
   // punto qualsiasi della partita, non lo spostamento di un singolo pezzo.
   chess.load(fenBefore);
   board.position(chess.fen(), false);
+  updateCapturedPieces();
   updateEvalBar(evalBefore, evalSideBefore);
 
   currentAnalysis = null; // la cache non è più valida: la posizione è cambiata
@@ -769,6 +808,7 @@ function onSnapEnd() {
 function newGame() {
   chess.reset();
   clearCheckmateEffects();
+  updateCapturedPieces();
   board.start();
   currentAnalysis = null;
   plyCount = 0;
@@ -792,6 +832,7 @@ function undoMove() {
   const undone = chess.undo();
   if (!undone) return;
   board.position(chess.fen());
+  updateCapturedPieces();
   clearSelection();
   clearArrows();
   currentAnalysis = null;
@@ -821,6 +862,7 @@ function flipBoard() {
   board.flip();
   boardFlipped = !boardFlipped;
   evalBarWrapEl.classList.toggle('flipped', boardFlipped);
+  capturedWrapEl.classList.toggle('flipped', boardFlipped);
   clearSelection();
   clearArrows();
   updateEvalBar(lastEvalScore, lastEvalSideToMove);
