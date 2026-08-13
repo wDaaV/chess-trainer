@@ -1,3 +1,7 @@
+/* ========== SEZIONE: Variabili globali (tema colori) ==========
+   Definisce la palette usata in tutto il foglio di stile: sfondi, bordi, testo e i colori associati alla qualità delle mosse (best/good/...).
+   ======================================== 
+*/
 :root {
   --bg: #14171c;
   --panel: #1c2028;
@@ -13,7 +17,8 @@
   --blunder: #f44336;
 }
 
-* { box-sizing: border-box; }
+/* ========== SEZIONE: Reset di base ========== */
+* { box-sizing: border-box; } /* include padding e bordo nella larghezza/altezza dichiarata */
 
 body {
   margin: 0;
@@ -22,6 +27,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+/* ========== SEZIONE: Intestazione del sito ========== */
 .site-header {
   display: flex;
   justify-content: center;
@@ -39,6 +45,10 @@ body {
 
 .site-header h1 { margin: 0; }
 
+/* ========== SEZIONE: Layout generale della pagina ==========
+   Contenitore principale che dispone affiancate la colonna della scacchiera e la colonna del pannello, con ritorno a capo su schermi stretti.
+   ========================================
+*/
 .container {
   max-width: 1560px;
   margin: 0 auto;
@@ -50,10 +60,7 @@ body {
   justify-content: center;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Colonna scacchiera                                                     */
-/* ---------------------------------------------------------------------- */
-
+/* --- Colonna scacchiera ---*/
 .board-section {
   flex: 1 1 700px;
   max-width: 780px;
@@ -72,12 +79,13 @@ body {
 }
 
 .board-shell {
-  position: relative;
+  position: relative; /* riferimento per gli elementi assoluti sovrapposti (frecce, overlay scacco matto) */
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
 }
 
+/* --- Barra di valutazione verticale accanto alla scacchiera --- */
 .eval-bar-wrap {
   display: flex;
   flex-direction: column;
@@ -87,6 +95,7 @@ body {
   width: 40px;
 }
 
+/* --- Colonna dei pezzi catturati --- */
 .captured-wrap {
   display: flex;
   flex-direction: column;
@@ -98,7 +107,7 @@ body {
 }
 
 .captured-wrap.flipped {
-  flex-direction: column-reverse;
+  flex-direction: column-reverse; /* inverte l'ordine alto/basso quando la scacchiera è girata */
 }
 
 .captured-tray {
@@ -134,7 +143,7 @@ body {
 }
 
 .eval-bar-wrap.flipped .eval-bar {
-  transform: scaleY(-1);
+  transform: scaleY(-1); /* ribalta visivamente la barra quando la scacchiera è girata */
 }
 
 .eval-fill {
@@ -142,7 +151,7 @@ body {
   left: 0;
   bottom: 0;
   width: 100%;
-  height: 50%;
+  height: 50%; /* altezza aggiornata via JS in base al vantaggio corrente */
   background: linear-gradient(180deg, #f4f4f4, #cfcfcf);
   transition: height 0.4s ease;
 }
@@ -150,7 +159,7 @@ body {
 #evalScore {
   width: 100%;
   text-align: center;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; /* cifre a larghezza fissa: il numero non "balla" quando cambia */
   color: var(--muted);
   font-size: 13px;
 }
@@ -162,12 +171,9 @@ body {
   min-height: 20px;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Evidenziazione mosse possibili sulla scacchiera (click e drag)         */
-/* ---------------------------------------------------------------------- */
-
+/* --- Evidenziazione mosse possibili sulla scacchiera (click e drag) --- */
 .square-55d63 {
-  position: relative;
+  position: relative; /* riferimento per i pallini/anelli (::after) posizionati in assoluto */
   cursor: pointer;
 }
 
@@ -191,7 +197,6 @@ body {
    chessboard.js e con la selezione su mobile. */
 #board img {
   -webkit-user-drag: none;
-  user-drag: none;
   pointer-events: auto;
 }
 
@@ -226,9 +231,7 @@ body {
   box-shadow: inset 0 0 0 9999px rgba(79, 140, 255, 0.35);
 }
 
-/* ---------------------------------------------------------------------- */
-/* Colonna pannello: controlli + analisi mosse                            */
-/* ---------------------------------------------------------------------- */
+/* --- Colonna pannello: controlli + analisi mosse ---*/
 
 .panel-section {
   flex: 1 1 520px;
@@ -255,7 +258,7 @@ body {
   gap: 8px;
 }
 
-/* --- Solo mobile: due righe distinte, come richiesto --- */
+/* --- Solo mobile: due righe distinte --- */
 @media (max-width: 640px) {
   .controls {
     flex-direction: column;
@@ -263,15 +266,6 @@ body {
   }
   .controls-row {
     width: 100%;
-  }
-  .controls-row-buttons {
-    justify-content: space-between;
-  }
-  .controls-row-buttons button {
-    flex: 1 1 0; /* i 3 bottoni si dividono tutto lo spazio disponibile */
-  }
-  .controls-row-depth {
-    justify-content: center;
   }
   .depth-control {
     width: 100%;
@@ -382,12 +376,12 @@ body {
   left: 50%;
   width: 2px;
   background: var(--border);
-  transform: translateX(-1px);
+  transform: translateX(-1px); /* centra esattamente la linea divisoria verticale */
 }
 
 .move-list {
   max-height: 480px;
-  overflow-y: auto;
+  overflow-y: auto; /* elenco mosse scorrevole oltre l'altezza massima */
 }
 
 .move-list-inner {
@@ -405,13 +399,13 @@ body {
   left: 50%;
   width: 2px;
   background: var(--border);
-  transform: translateX(-1px);
+  transform: translateX(-1px); /* centra esattamente la linea divisoria verticale */
   pointer-events: none;
 }
 
 .move-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* colonna mossa del bianco + colonna mossa del nero */
   gap: 0;
 }
 
@@ -420,12 +414,13 @@ body {
 
 .move-item {
   border: 1px solid var(--border);
-  border-left: 4px solid var(--muted);
+  border-left: 4px solid var(--muted); /* colore di base, sovrascritto dalle classi di valutazione sotto */
   border-radius: 6px;
   padding: 8px 10px;
   background: #171a20;
 }
 
+/* Colore del bordo sinistro in base alla qualità della mossa (assegnata da app.js) */
 .move-item.best { border-left-color: var(--best); }
 .move-item.good { border-left-color: var(--good); }
 .move-item.inaccuracy { border-left-color: var(--inaccuracy); }
@@ -472,6 +467,7 @@ body {
   font-weight: 700;
 }
 
+/* Sfondo del badge in base alla qualità della mossa */
 .badge.best { background: var(--best); }
 .badge.good { background: var(--good); }
 .badge.inaccuracy { background: var(--inaccuracy); }
@@ -479,6 +475,7 @@ body {
 .badge.blunder { background: var(--blunder); }
 .badge.book { background: var(--book); }
 
+/* ========== SEZIONE: Piè di pagina ========== */
 .site-footer {
   text-align: center;
   color: var(--muted);
@@ -486,6 +483,10 @@ body {
   padding: 24px 16px 40px;
 }
 
+/* ========== SEZIONE: Adattamento responsive del layout generale ==========
+   Sotto 1050px la colonna scacchiera e quella del pannello si impilano verticalmente invece di stare affiancate.
+   ========================================
+*/
 @media (max-width: 1050px) {
   .container { flex-direction: column; align-items: stretch; }
   .board-section, .panel-section {
@@ -498,6 +499,7 @@ body {
   .eval-bar { width: 18px; }
 }
 
+/* ========== SEZIONE: Legenda della notazione scacchistica ========== */
 .notation-legend {
   padding-bottom: 16px;
   margin-bottom: 16px;
@@ -542,13 +544,14 @@ body {
 
 .notation-desc { color: var(--muted); }
 
+/* ========== SEZIONE: Frecce di annotazione (disegnate col tasto destro sulla scacchiera) ========== */
 .arrow-layer {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none; /* le frecce non devono intercettare i click sulla scacchiera */
-  z-index: 15;           /* sopra ai move-hint (z-index 5), sotto all'overlay di scacco matto (20) */
+  z-index: 15; /* sopra ai move-hint (z-index 5), sotto all'overlay di scacco matto (20) */
 }
 
 .arrow-shape {
@@ -556,6 +559,10 @@ body {
   stroke: none;
 }
 
+/* ========== SEZIONE: Effetti di fine partita (scacco matto) ==========
+   Overlay centrale, tremolio della scacchiera ed evidenziazione del re sotto scacco matto.
+   ========================================
+*/
 .checkmate-overlay {
   position: absolute;
   inset: 0;
@@ -599,7 +606,7 @@ body {
 }
 
 .board-shell.checkmate-shake {
-  animation: checkmate-shake 320ms ease;
+  animation: checkmate-shake 320ms ease; /* applicata via JS quando viene rilevato lo scacco matto */
 }
 
 @keyframes checkmate-shake {
@@ -612,5 +619,5 @@ body {
 }
 
 .square-55d63.checkmated-king {
-  box-shadow: inset 0 0 0 9999px rgba(209, 16, 3, 0.34);
+  box-shadow: inset 0 0 0 9999px rgba(209, 16, 3, 0.34); /* evidenzia in rosso la casella del re sotto scacco matto */
 }

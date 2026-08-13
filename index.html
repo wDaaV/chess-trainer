@@ -5,33 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chess Trainer — Allenati con Stockfish 18 lite</title>
 
-  <link rel="icon" type="img/chess-trainer-logo" href="img/chess-trainer-logo.png">
+  <!-- ========== SEZIONE: Icona del sito ========== -->
+  <!-- Definisce l'icona mostrata nella scheda del browser (favicon) -->
+  <!-- ======================================== -->
+  <link rel="icon" type="img/png" href="img/chess-trainer-logo.png">
 
+  <!-- ========== SEZIONE: Progressive Web App (PWA) ==========-->
+  <!-- Collega il manifest e imposta i metadati che permettono al browser di offrire l'installazione dell'app come applicazione standalone -->
+  <!-- ======================================== -->
+  <link rel="manifest" href="manifest.json"> <!-- file che descrive nome, icone e comportamento della PWA -->
+  <meta name="theme-color" content="#14171c"> <!-- colore della barra di stato/UI del sistema operativo -->
+  <!-- Safari/iOS non legge manifest.json per icona e comportamento a schermo intero: servono questi tag dedicati -->
+  <link rel="apple-touch-icon" href="img/chess-trainer-logo.png">
+  <meta name="apple-mobile-web-app-capable" content="yes"> <!-- abilita la modalità "app" senza barra degli indirizzi su iOS -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chess Trainer">
+
+  <!-- ========== SEZIONE: Fogli di stile esterni ========== -->
+  <!-- Carica lo stile della scacchiera (chessboard.js), il font e il foglio di stile proprio dell'applicazione -->
+  <!-- ======================================== -->
   <link rel="stylesheet"
     href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
     integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
     crossorigin="anonymous">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com"> <!-- apre in anticipo la connessione verso Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
 
+<body>
+  <!-- ========== SEZIONE: Intestazione del sito ========== -->
+  <!-- Logo e titolo mostrati in cima alla pagina -->
+  <!-- ======================================== -->
   <header class="site-header">
     <img src="img/chess-trainer-logo.png" alt="Chess Trainer" class="site-logo">
     <h1>Chess Trainer</h1>
   </header>
 
   <main class="container">
-
+    <!-- ========== SEZIONE: Colonna scacchiera ========== -->
+    <!-- Contiene la barra di valutazione, i pezzi catturati, la scacchiera vera e propria e l'overlay di scacco matto -->
+    <!-- ======================================== -->
     <section class="board-section">
 
       <div class="board-row">
         <div class="eval-bar-wrap" id="evalBarWrap">
-          <div class="eval-bar"><div id="evalFill" class="eval-fill"></div></div>
-          <span id="evalScore">0.00</span>
+          <div class="eval-bar"><div id="evalFill" class="eval-fill"></div></div> <!-- riempimento dinamico in base al vantaggio -->
+          <span id="evalScore">0.00</span> <!-- punteggio testuale (es. +0.35) aggiornato da app.js -->
         </div>
 
          <div class="captured-wrap" id="capturedWrap">
@@ -40,8 +60,9 @@
         </div>
 
         <div class="board-shell" id="boardShell">
-          <div id="board" class="board"></div>
+          <div id="board" class="board"></div> <!-- contenitore in cui chessboard.js disegna la scacchiera -->
 
+          <!-- Overlay mostrato solo quando la partita termina con scacco matto -->
           <div id="checkmateOverlay" class="checkmate-overlay" aria-hidden="true">
             <div class="checkmate-overlay-content">
               <div class="checkmate-title">Scacco matto</div>
@@ -51,11 +72,15 @@
         </div>
       </div>
 
-      <p id="engineStatus" class="status">Caricamento del motore Stockfish…</p>
+      <p id="engineStatus" class="status">Caricamento del motore Stockfish…</p> <!-- testo di stato aggiornato da app.js -->
     </section>
 
+    <!-- ========== SEZIONE: Pannello laterale ========== -->
+    <!-- Comandi di gioco, legenda della notazione e lista delle mosse con relativa analisi -->
+    <!-- ======================================== -->
     <section class="panel-section">
 
+      <!-- ---- Sottosezione: comandi di gioco ---- -->
       <div class="controls">
         <div class="controls-row controls-row-buttons">
           <button id="newGameBtn" type="button">Nuova partita</button>
@@ -66,7 +91,7 @@
         <div class="controls-row controls-row-depth">
           <div class="depth-control">
             <label for="depthSelect">Profondità motore</label>
-            <select id="depthSelect">
+            <select id="depthSelect"> <!-- profondità di ricerca UCI passata a Stockfish -->
               <option value="10">10 — veloce</option>
               <option value="14" selected>14 — consigliata</option>
               <option value="18">18 — lenta, più forte</option>
@@ -75,6 +100,7 @@
         </div>
       </div>
 
+      <!-- ---- Sottosezione: legenda della notazione scacchistica ---- -->
       <div class="notation-legend">
         <h2 class="notation-legend-title">Notazione scacchistica</h2>
         <div class="notation-grid">
@@ -93,25 +119,30 @@
         </div>
       </div>
 
+      <!-- ---- Sottosezione: lista delle mosse analizzate ---- -->
       <h2>Analisi delle mosse</h2>
-      <h4 id="openingName" class="opening-name"></h4>
+      <h4 id="openingName" class="opening-name"></h4> <!-- nome dell'apertura riconosciuta, popolato da app.js -->
       <div class="move-list-header">
         <span>Bianco</span>
         <span>Nero</span>
       </div>
       <div id="moveList" class="move-list">
-        <div id="moveListInner" class="move-list-inner"></div>
+        <div id="moveListInner" class="move-list-inner"></div> <!-- righe delle mosse, generate dinamicamente da app.js -->
       </div>
 
     </section>
 
   </main>
 
+  <!-- ========== SEZIONE: Piè di pagina ========== -->
+  <!-- ============================================================ -->
   <footer class="site-footer">
     <p>Motore: Stockfish 18 lite(WebAssembly, eseguito localmente nel browser). Nessun dato viene inviato a un server.</p>
   </footer>
 
-  <!-- jQuery e chessboard.js: librerie "classiche", devono essere caricate prima del modulo dell'app -->
+  <!-- ========== SEZIONE: Script ========== -->
+  <!-- jQuery e chessboard.js sono librerie "classiche" (non moduli) e devono essere caricate prima del modulo dell'app, che le usa -->
+  <!-- ======================================== -->
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"
     integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
     crossorigin="anonymous"></script>
