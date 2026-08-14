@@ -330,7 +330,8 @@ async function processMove(moveObj, fenBefore, fenAfter) {
     evalScoreBefore: beforeAnalysis.score,
     evalSideBefore: moveObj.color,
     openingNameAfter: currentOpeningName,
-    fenBefore: fenBefore   // posizione esatta da cui ripartire se si clicca il link di questa mossa
+    fenBefore: fenBefore,   // posizione esatta da cui ripartire se si clicca il link di questa mossa
+    san: moveObj.san
   });
 
   updateEvalBar(afterAnalysis.score, chess.turn());
@@ -426,7 +427,6 @@ function jumpAndReplay(thisPly, bestMoveUci) {
 
   // La mossa che stiamo per scartare: da qui recuperiamo il FEN e la valutazione "prima" di essa, verso cui riportare partita e barra di eval.
   const cutEntry = plyHistory[thisPly - 1];
-  const fenBefore = cutEntry.fenBefore;
   const evalBefore = cutEntry.evalScoreBefore;
   const evalSideBefore = cutEntry.evalSideBefore;
 
@@ -448,8 +448,9 @@ function jumpAndReplay(thisPly, bestMoveUci) {
   const lastEntry = plyHistory.length ? plyHistory[plyHistory.length - 1] : null;
   setOpeningName(lastEntry ? lastEntry.openingNameAfter : '');
 
-  // Ricarica chess.js e la scacchiera sulla posizione "prima" della mossa scartata. Niente animazione (secondo parametro "false"): è un salto a un punto qualsiasi della partita, non lo spostamento di un singolo pezzo.
-  chess.load(fenBefore);
+  // Ricostruiamo la posizione rigiocando via chess.move() ogni mossa rimasta in plyHistory, partendo da una partita azzerata: lo storico resta così sempre completo
+  chess.reset();
+  plyHistory.forEach((entry) => chess.move(entry.san));
   board.position(chess.fen(), false);
   updateCapturedPieces();
   updateEvalBar(evalBefore, evalSideBefore);
