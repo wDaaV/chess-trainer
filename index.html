@@ -101,21 +101,34 @@
       </div>
 
       <!-- ---- Sottosezione: legenda della notazione scacchistica ---- -->
-      <div class="notation-legend">
-        <h2 class="notation-legend-title">Notazione scacchistica</h2>
-        <div class="notation-grid">
-          <div class="notation-item"><span class="notation-symbol">K</span><span class="notation-desc">Re</span></div>
-          <div class="notation-item"><span class="notation-symbol">Q</span><span class="notation-desc">Donna</span></div>
-          <div class="notation-item"><span class="notation-symbol">R</span><span class="notation-desc">Torre</span></div>
-          <div class="notation-item"><span class="notation-symbol">—</span><span class="notation-desc">Pedone (nessuna lettera)</span></div>
-          <div class="notation-item"><span class="notation-symbol">B</span><span class="notation-desc">Alfiere</span></div>
-          <div class="notation-item"><span class="notation-symbol">N</span><span class="notation-desc">Cavallo</span></div>
-          <div class="notation-item"><span class="notation-symbol">O-O</span><span class="notation-desc">Arrocco corto</span></div>
-          <div class="notation-item"><span class="notation-symbol">O-O-O</span><span class="notation-desc">Arrocco lungo</span></div>
-          <div class="notation-item"><span class="notation-symbol">x</span><span class="notation-desc">Cattura</span></div>
-          <div class="notation-item"><span class="notation-symbol">= Q</span><span class="notation-desc">Promozione</span></div>
-          <div class="notation-item"><span class="notation-symbol">+</span><span class="notation-desc">Scacco</span></div>
-          <div class="notation-item"><span class="notation-symbol">#</span><span class="notation-desc">Scacco matto</span></div>
+      <div class="notation-legend" id="notationLegend">
+        <h2 class="notation-legend-title">
+          <button type="button"
+                  id="notationLegendToggle"
+                  class="notation-legend-toggle"
+                  aria-expanded="false"
+                  aria-controls="notationLegendPanel">
+                  Legenda notazione scacchistica
+            <span class="notation-legend-arrow" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="notation-legend-panel" id="notationLegendPanel">
+          <div class="notation-legend-panel-inner">
+            <div class="notation-grid">
+              <div class="notation-item"><span class="notation-symbol">K</span><span class="notation-desc">Re</span></div>
+              <div class="notation-item"><span class="notation-symbol">Q</span><span class="notation-desc">Donna</span></div>
+              <div class="notation-item"><span class="notation-symbol">R</span><span class="notation-desc">Torre</span></div>
+              <div class="notation-item"><span class="notation-symbol">—</span><span class="notation-desc">Pedone (nessuna lettera)</span></div>
+              <div class="notation-item"><span class="notation-symbol">B</span><span class="notation-desc">Alfiere</span></div>
+              <div class="notation-item"><span class="notation-symbol">N</span><span class="notation-desc">Cavallo</span></div>
+              <div class="notation-item"><span class="notation-symbol">O-O</span><span class="notation-desc">Arrocco corto</span></div>
+              <div class="notation-item"><span class="notation-symbol">O-O-O</span><span class="notation-desc">Arrocco lungo</span></div>
+              <div class="notation-item"><span class="notation-symbol">x</span><span class="notation-desc">Cattura</span></div>
+              <div class="notation-item"><span class="notation-symbol">= Q</span><span class="notation-desc">Promozione</span></div>
+              <div class="notation-item"><span class="notation-symbol">+</span><span class="notation-desc">Scacco</span></div>
+              <div class="notation-item"><span class="notation-symbol">#</span><span class="notation-desc">Scacco matto</span></div>
+            </div>
+          </div>
         </div>
       </div>
 

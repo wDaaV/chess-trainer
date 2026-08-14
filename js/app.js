@@ -890,6 +890,15 @@ window.addEventListener('resize', () => {
 document.getElementById('newGameBtn').addEventListener('click', newGame);
 document.getElementById('undoBtn').addEventListener('click', undoMove);
 document.getElementById('flipBtn').addEventListener('click', flipBoard);
+
+// Apertura/chiusura della legenda notazioni
+const notationLegendEl = document.getElementById('notationLegend');
+const notationLegendToggleEl = document.getElementById('notationLegendToggle');
+notationLegendToggleEl.addEventListener('click', () => {
+  const isExpanded = notationLegendEl.classList.toggle('expanded');
+  notationLegendToggleEl.setAttribute('aria-expanded', String(isExpanded));
+});
+
 document.getElementById('depthSelect').addEventListener('change', (e) => {
   analysisDepth = parseInt(e.target.value, 10);
   currentAnalysis = null; // ricalcola con la nuova profondità dalla prossima mossa
