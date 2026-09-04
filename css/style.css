@@ -72,8 +72,8 @@ body {
   padding: 16px;
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
-  align-items: flex-start;
+  gap: 10px;
+  align-items: stretch;
   justify-content: center;
 }
 
@@ -86,7 +86,7 @@ body {
 .board-row {
   display: flex;
   align-items: stretch;
-  gap: 14px;
+  gap: 10px;
 }
 
 .board {
@@ -182,7 +182,7 @@ body {
 }
 
 .status {
-  margin-top: 14px;
+  margin-top: 10px;
   color: var(--muted);
   font-size: 14px;
   min-height: 20px;
@@ -257,6 +257,8 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .controls {
@@ -397,8 +399,9 @@ body {
 }
 
 .move-list {
-  max-height: 480px;
-  overflow-y: auto; /* elenco mosse scorrevole oltre l'altezza massima */
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .move-list-inner {
@@ -512,6 +515,10 @@ body {
     max-width: 100%;
     flex: 1 1 auto;
   }
+  .move-list {
+    flex: 0 1 auto;
+    max-height: 480px;
+  }
 }
 
 @media (max-width: 700px) and (orientation: landscape) {
@@ -519,6 +526,10 @@ body {
   .board-section, .panel-section {
     max-width: 100%;
     flex: 1 1 auto;
+  }
+  .move-list {
+    flex: 0 1 auto;
+    max-height: 480px;
   }
 }
 
@@ -528,8 +539,9 @@ body {
 
 /* ========== SEZIONE: Legenda della notazione scacchistica ========== */
 .notation-legend {
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
 .notation-legend-toggle {
@@ -549,6 +561,10 @@ body {
 
 .notation-legend-title {
   margin: 0 0 15px;
+}
+
+.notation-legend:not(.expanded) .notation-legend-title {
+  margin-bottom: 0;
 }
 
 .notation-legend-arrow {

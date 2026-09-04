@@ -395,9 +395,9 @@ function addMoveToList(moveObj, bestSan, classification, isBestMove, bestMoveUci
   if (classification.css === 'book') {
     detail.textContent = 'Mossa teorica';
   } else if (isBestMove) {
-    detail.textContent = 'Hai giocato la mossa migliore secondo Stockfish';
+    detail.textContent = 'Hai giocato la mossa migliore';
   } else {
-    detail.textContent = 'Mossa migliore secondo Stockfish: ';
+    detail.textContent = 'Mossa migliore: ';
 
     const link = document.createElement('a');
     link.href = '#';
