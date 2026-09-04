@@ -81,6 +81,7 @@ body {
 .board-section {
   flex: 1 1 700px;
   max-width: 780px;
+  min-width: 0;
 }
 
 .board-row {
@@ -253,6 +254,7 @@ body {
 .panel-section {
   flex: 1 1 520px;
   max-width: 620px;
+  min-width: 0;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -786,13 +788,13 @@ body {
 /* ========== SEZIONE: Tablet in orizzontale ==========
    Tra 701px e 1050px in landscape c'è spazio per affiancare le colonne, ma serve una base più stretta di quella desktop per farcele stare.
    ======================================== */
-@media (min-width: 701px) and (max-width: 1050px) and (orientation: landscape) {
+@media (min-width: 700px) and (max-width: 1400px) and (orientation: landscape) {
   .board-section {
-    flex: 1 1 380px;
-    max-width: 460px;
+    flex: 1 1 460px;
+    max-width: 560px;
   }
   .panel-section {
-    flex: 1 1 380px;
-    max-width: 460px;
+    flex: 1 1 420px;
+    max-width: 520px;
   }
 }
