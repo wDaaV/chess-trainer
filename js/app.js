@@ -676,7 +676,7 @@ function clearArrows() {
 // Mostra, in alto a destra della casella di arrivo dell'ultima mossa giocata, un cerchio colorato con un'icona bianca che ne indica la qualità (stile chess.com/wintrchess): libro, stella, pollice in su, check, oppure "?!" / "?" / "??". Usa un layer overlay separato (come le frecce), perché chessboard.js ricrea il contenuto delle celle a ogni mossa e cancellerebbe qualsiasi nodo inserito direttamente al loro interno.
 // ========================================
 
-// Icone per ciascuna categoria: SVG per libro/stella/pollice/check, testo per le imprecisioni/errori.
+// Icone svg per ciascuna categoria
 const QUALITY_ICONS = {
 book: '<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M384 512L96 512c-53 0-96-43-96-96L0 96C0 43 43 0 96 0L400 0c26.5 0 48 21.5 48 48l0 288c0 20.9-13.4 38.7-32 45.3l0 66.7c17.7 0 32 14.3 32 32s-14.3 32-32 32l-32 0zM96 384c-17.7 0-32 14.3-32 32s14.3 32 32 32l256 0 0-64-256 0zm32-232c0 13.3 10.7 24 24 24l176 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-176 0c-13.3 0-24 10.7-24 24zm24 72c-13.3 0-24 10.7-24 24s10.7 24 24 24l176 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-176 0z"/></svg>',
   best: '<svg viewBox="0 0 576 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M309.5-18.9c-4.1-8-12.4-13.1-21.4-13.1s-17.3 5.1-21.4 13.1L193.1 125.3 33.2 150.7c-8.9 1.4-16.3 7.7-19.1 16.3s-.5 18 5.8 24.4l114.4 114.5-25.2 159.9c-1.4 8.9 2.3 17.9 9.6 23.2s16.9 6.1 25 2L288.1 417.6 432.4 491c8 4.1 17.7 3.3 25-2s11-14.2 9.6-23.2L441.7 305.9 556.1 191.4c6.4-6.4 8.6-15.8 5.8-24.4s-10.1-14.9-19.1-16.3L383 125.3 309.5-18.9z"/></svg>',

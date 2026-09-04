@@ -672,18 +672,13 @@ body {
   height: 60%;
 }
 
-/* Tutte e sette le icone sono ora Font Awesome Solid, disegnate a riempire quasi
-   interamente il proprio viewBox quadrato: un'unica dimensione (60%) va bene per
-   tutte, non serve più una taglia diversa per categoria.
-   I transform sotto correggono la leggera asimmetria "di inchiostro" dentro il
-   viewBox — calcolata sulla bounding box reale di ciascun path, non a occhio —
-   così il baricentro visivo coincide col centro del cerchio colorato. */
+/* Tutte e sette le icone con Font Awesome Solid*/
 
-.move-quality-badge.book svg,
+/*.move-quality-badge.book svg,
 .move-quality-badge.inaccuracy svg,
 .move-quality-badge.blunder svg {
-  /* cerchio/rettangolo che riempie esattamente il viewBox: nessuna correzione */
-}
+  cerchio/rettangolo che riempie esattamente il viewBox: nessuna correzione
+}*/
 
 .move-quality-badge.best svg {
   /* la punta superiore della stella sborda oltre il viewBox: baricentro
@@ -784,7 +779,7 @@ body {
 
 
 
-/*prova nuova*/
+
 /* ========== SEZIONE: Tablet in orizzontale ==========
    Tra 701px e 1050px in landscape c'è spazio per affiancare le colonne, ma serve una base più stretta di quella desktop per farcele stare.
    ======================================== */
@@ -796,5 +791,13 @@ body {
   .panel-section {
     flex: 1 1 420px;
     max-width: 520px;
+  }
+  .controls {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .controls-row-depth {
+    flex-basis: 100%;
+    justify-content: center;
   }
 }
