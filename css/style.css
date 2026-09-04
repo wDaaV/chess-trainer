@@ -11,6 +11,7 @@
   --accent: #4f8cff;
   --book: #d5a47d;
   --best: #4caf50;
+  --excellent: #4caf50;
   --good: #8bc34a;
   --inaccuracy: #ffc107;
   --mistake: #ff9800;
@@ -33,7 +34,7 @@ body {
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 24px 16px 32px;
+  padding: 24px 16px 24px;
   gap: 10px;
 }
 
@@ -45,6 +46,22 @@ body {
 
 .site-header h1 { margin: 0; }
 
+@media (max-width: 640px), (orientation: landscape) and (max-height: 500px) {
+  .site-header {
+    padding: 5px 5px 0px;
+    gap: 8px;
+  }
+
+  .site-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .site-header h1 {
+    font-size: 20px;
+  }
+}
+
 /* ========== SEZIONE: Layout generale della pagina ==========
    Contenitore principale che dispone affiancate la colonna della scacchiera e la colonna del pannello, con ritorno a capo su schermi stretti.
    ========================================
@@ -55,7 +72,7 @@ body {
   padding: 16px;
   display: flex;
   flex-wrap: wrap;
-  gap: 32px;
+  gap: 20px;
   align-items: flex-start;
   justify-content: center;
 }
@@ -422,6 +439,7 @@ body {
 
 /* Colore del bordo sinistro in base alla qualità della mossa (assegnata da app.js) */
 .move-item.best { border-left-color: var(--best); }
+.move-item.excellent { border-left-color: var(--excellent); }
 .move-item.good { border-left-color: var(--good); }
 .move-item.inaccuracy { border-left-color: var(--inaccuracy); }
 .move-item.mistake { border-left-color: var(--mistake); }
@@ -469,6 +487,7 @@ body {
 
 /* Sfondo del badge in base alla qualità della mossa */
 .badge.best { background: var(--best); }
+.badge.excellent { background: var(--excellent); }
 .badge.good { background: var(--good); }
 .badge.inaccuracy { background: var(--inaccuracy); }
 .badge.mistake { background: var(--mistake); }
@@ -487,7 +506,15 @@ body {
    Sotto 1050px la colonna scacchiera e quella del pannello si impilano verticalmente invece di stare affiancate.
    ========================================
 */
-@media (max-width: 1050px) {
+@media (max-width: 1050px) and (orientation: portrait) {
+  .container { flex-direction: column; align-items: stretch; }
+  .board-section, .panel-section {
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 700px) and (orientation: landscape) {
   .container { flex-direction: column; align-items: stretch; }
   .board-section, .panel-section {
     max-width: 100%;
@@ -597,6 +624,81 @@ body {
   fill: rgba(255, 170, 0, 0.65);
   stroke: none;
 }
+
+/* ========== SEZIONE: Simbolo di qualità mossa (stile chess.com/wintrchess) ==========
+   Cerchio colorato con icona bianca, mostrato in alto a destra della casella di arrivo dell'ultima mossa giocata. Layer overlay separato (come le frecce), NON inserito dentro le celle di chessboard.js, che le ricrea a ogni mossa.
+   ========================================
+*/
+.move-quality-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* non deve intercettare i click sulla scacchiera */
+  z-index: 16;
+}
+
+.move-quality-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.move-quality-badge svg {
+  width: 60%;
+  height: 60%;
+}
+
+/* Tutte e sette le icone sono ora Font Awesome Solid, disegnate a riempire quasi
+   interamente il proprio viewBox quadrato: un'unica dimensione (60%) va bene per
+   tutte, non serve più una taglia diversa per categoria.
+   I transform sotto correggono la leggera asimmetria "di inchiostro" dentro il
+   viewBox — calcolata sulla bounding box reale di ciascun path, non a occhio —
+   così il baricentro visivo coincide col centro del cerchio colorato. */
+
+.move-quality-badge.book svg,
+.move-quality-badge.inaccuracy svg,
+.move-quality-badge.blunder svg {
+  /* cerchio/rettangolo che riempie esattamente il viewBox: nessuna correzione */
+}
+
+.move-quality-badge.best svg {
+  /* la punta superiore della stella sborda oltre il viewBox: baricentro
+     spostato verso l'alto di ~4.9% dell'altezza dell'icona */
+  transform: translateY(4.9%);
+}
+
+.move-quality-badge.excellent svg {
+  /* il pollice sporge leggermente in alto a destra: baricentro spostato
+     di ~1.6% su entrambi gli assi */
+  transform: translate(1.6%, 1.6%);
+}
+
+.move-quality-badge.good svg {
+  /* il segno di spunta ha più massa nella metà inferiore: baricentro
+     spostato in basso di ~3.1% dell'altezza dell'icona */
+  transform: translateY(-3.1%);
+}
+
+.move-quality-badge.mistake svg {
+  /* il triangolo di attenzione è più "basso" del quadrato che lo contiene:
+     baricentro spostato verso l'alto di ~3.1% dell'altezza dell'icona */
+  transform: translateY(3.1%);
+}
+
+/* Colore di sfondo del cerchio in base alla qualità della mossa */
+.move-quality-badge.book { background: var(--book); }
+.move-quality-badge.best { background: var(--best); }
+.move-quality-badge.excellent { background: var(--excellent); }
+.move-quality-badge.good { background: var(--good); }
+.move-quality-badge.inaccuracy { background: var(--inaccuracy); }
+.move-quality-badge.mistake { background: var(--mistake); }
+.move-quality-badge.blunder { background: var(--blunder); }
 
 /* ========== SEZIONE: Effetti di fine partita (scacco matto) ==========
    Overlay centrale, tremolio della scacchiera ed evidenziazione del re sotto scacco matto.

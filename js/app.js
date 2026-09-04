@@ -29,6 +29,8 @@ let wasAlreadySelected = false; // vedi onDragStart/onDrop: distingue un "click"
 let arrows = [];             // frecce di annotazione disegnate col tasto destro: [{ from, to }, ...]
 let arrowDragStart = null;   // casella di partenza durante un trascinamento col tasto destro, null se non in corso
 let arrowLayerEl = null;     // elemento <svg> sovrapposto alla scacchiera su cui vengono disegnate le frecce
+let moveQualityLayerEl = null; // elemento <div> sovrapposto alla scacchiera su cui viene disegnato il badge di qualità
+let lastMoveQuality = null;    // { square, css } dell'ultimo badge mostrato, null se nessuno
 let lastEvalScore = { cp: 0 };   // ultimo punteggio ricevuto dal motore (per ricalcolo al flip)
 let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
 let plyHistory = [];       // pila con un record per ogni mossa giocata
@@ -273,7 +275,8 @@ function uciToSan(fen, uciMove) {
 // Classifica la mossa in base alla perdita di probabilità di vittoria (valore tra 0 e 1) invece che alla perdita lineare in centipedoni.
 function classifyMove(winProbLoss, isBestMove, isBook) {
   if (isBook) return { label: 'Mossa da libro', css: 'book' };
-  if (isBestMove || winProbLoss < 0.02) return { label: 'Ottima mossa', css: 'best' };
+  if (isBestMove) return { label: 'Mossa migliore', css: 'best' };
+  if (winProbLoss < 0.02) return { label: 'Ottima mossa', css: 'excellent' };
   if (winProbLoss < 0.06) return { label: 'Buona mossa', css: 'good' };
   if (winProbLoss < 0.12) return { label: 'Imprecisione', css: 'inaccuracy' };
   if (winProbLoss < 0.22) return { label: 'Errore', css: 'mistake' };
@@ -323,6 +326,9 @@ async function processMove(moveObj, fenBefore, fenAfter) {
   }
 
   const listRefs = addMoveToList(moveObj, bestSan, classification, isBestMove, beforeAnalysis.bestMoveUci);
+
+  showMoveQualityBadge(moveObj.to, classification.css); // mostra libro/stella/pollice/check/?!/?/?? sulla casella di arrivo
+
   plyHistory.push({
     rowEl: listRefs.rowEl,
     itemEl: listRefs.itemEl,
@@ -331,7 +337,9 @@ async function processMove(moveObj, fenBefore, fenAfter) {
     evalSideBefore: moveObj.color,
     openingNameAfter: currentOpeningName,
     fenBefore: fenBefore,   // posizione esatta da cui ripartire se si clicca il link di questa mossa
-    san: moveObj.san
+    san: moveObj.san,
+    qualitySquare: moveObj.to,
+    qualityCss: classification.css
   });
 
   updateEvalBar(afterAnalysis.score, chess.turn());
@@ -664,6 +672,76 @@ function clearArrows() {
   renderArrows();
 }
 
+// ========== SEZIONE: Simbolo di qualità mossa sulla scacchiera ==========
+// Mostra, in alto a destra della casella di arrivo dell'ultima mossa giocata, un cerchio colorato con un'icona bianca che ne indica la qualità (stile chess.com/wintrchess): libro, stella, pollice in su, check, oppure "?!" / "?" / "??". Usa un layer overlay separato (come le frecce), perché chessboard.js ricrea il contenuto delle celle a ogni mossa e cancellerebbe qualsiasi nodo inserito direttamente al loro interno.
+// ========================================
+
+// Icone per ciascuna categoria: SVG per libro/stella/pollice/check, testo per le imprecisioni/errori.
+const QUALITY_ICONS = {
+book: '<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M384 512L96 512c-53 0-96-43-96-96L0 96C0 43 43 0 96 0L400 0c26.5 0 48 21.5 48 48l0 288c0 20.9-13.4 38.7-32 45.3l0 66.7c17.7 0 32 14.3 32 32s-14.3 32-32 32l-32 0zM96 384c-17.7 0-32 14.3-32 32s14.3 32 32 32l256 0 0-64-256 0zm32-232c0 13.3 10.7 24 24 24l176 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-176 0c-13.3 0-24 10.7-24 24zm24 72c-13.3 0-24 10.7-24 24s10.7 24 24 24l176 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-176 0z"/></svg>',
+  best: '<svg viewBox="0 0 576 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M309.5-18.9c-4.1-8-12.4-13.1-21.4-13.1s-17.3 5.1-21.4 13.1L193.1 125.3 33.2 150.7c-8.9 1.4-16.3 7.7-19.1 16.3s-.5 18 5.8 24.4l114.4 114.5-25.2 159.9c-1.4 8.9 2.3 17.9 9.6 23.2s16.9 6.1 25 2L288.1 417.6 432.4 491c8 4.1 17.7 3.3 25-2s11-14.2 9.6-23.2L441.7 305.9 556.1 191.4c6.4-6.4 8.6-15.8 5.8-24.4s-10.1-14.9-19.1-16.3L383 125.3 309.5-18.9z"/></svg>',
+  excellent: '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M80 160c17.7 0 32 14.3 32 32l0 256c0 17.7-14.3 32-32 32l-48 0c-17.7 0-32-14.3-32-32L0 192c0-17.7 14.3-32 32-32l48 0zM270.6 16C297.9 16 320 38.1 320 65.4l0 4.2c0 6.8-1.3 13.6-3.8 19.9L288 160 448 160c26.5 0 48 21.5 48 48 0 19.7-11.9 36.6-28.9 44 17 7.4 28.9 24.3 28.9 44 0 23.4-16.8 42.9-39 47.1 4.4 7.3 7 15.8 7 24.9 0 22.2-15 40.8-35.4 46.3 2.2 5.5 3.4 11.5 3.4 17.7 0 26.5-21.5 48-48 48l-87.9 0c-36.3 0-71.6-12.4-99.9-35.1L184 435.2c-15.2-12.1-24-30.5-24-50l0-186.6c0-14.9 3.5-29.6 10.1-42.9L226.3 43.3C234.7 26.6 251.8 16 270.6 16z"/></svg>',
+  good: '<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M434.8 70.1c14.3 10.4 17.5 30.4 7.1 44.7l-256 352c-5.5 7.6-14 12.3-23.4 13.1s-18.5-2.7-25.1-9.3l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l101.5 101.5 234-321.7c10.4-14.3 30.4-17.5 44.7-7.1z"/></svg>',
+  inaccuracy: '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-336c-17.7 0-32 14.3-32 32 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 47.2-36 67.2-56 74.5l0 3.8c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-8.1c0-20.5 14.8-35.2 30.1-40.2 6.4-2.1 13.2-5.5 18.2-10.3 4.3-4.2 7.7-10 7.7-19.6 0-17.7-14.3-32-32-32zM224 368a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg>',
+  mistake: '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M256 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.1 480 472 480L40 480c-14.1 0-27.2-7.4-34.4-19.5s-7.5-27.1-.8-39.5l216-400c7-12.9 20.5-21 35.2-21zm0 352a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.5 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"/></svg>',
+  blunder: '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-192a32 32 0 1 0 0 64 32 32 0 1 0 0-64zm0-192c-18.2 0-32.7 15.5-31.4 33.7l7.4 104c.9 12.6 11.4 22.3 23.9 22.3 12.6 0 23-9.7 23.9-22.3l7.4-104c1.3-18.2-13.1-33.7-31.4-33.7z"/></svg>'
+};
+
+function createMoveQualityLayer() {
+  const el = document.createElement('div');
+  el.id = 'moveQualityLayer';
+  el.className = 'move-quality-layer';
+  boardShellEl.appendChild(el);
+  return el;
+}
+
+// Angolo in alto a destra di una casella, in pixel relativi a boardShellEl, più la dimensione della casella stessa (serve per dimensionare il cerchio in proporzione alla scacchiera corrente).
+function squareTopRightPx(square) {
+  const el = document.querySelector(squareSelector(square));
+  if (!el) return null; // casella non trovata nel DOM
+  const shellRect = boardShellEl.getBoundingClientRect();
+  const sqRect = el.getBoundingClientRect();
+  return {
+    x: sqRect.right - shellRect.left,
+    y: sqRect.top - shellRect.top,
+    size: sqRect.width
+  };
+}
+
+// Disegna (o ridisegna, es. dopo un resize/flip) il badge corrente in base a "lastMoveQuality".
+function renderMoveQualityBadge() {
+  if (!moveQualityLayerEl) return;
+  moveQualityLayerEl.innerHTML = ''; // svuota il layer prima di ridisegnare
+  if (!lastMoveQuality) return;
+
+  const pos = squareTopRightPx(lastMoveQuality.square);
+  if (!pos) return;
+
+    const size = Math.round(pos.size * 0.5);
+
+  const el = document.createElement('div');
+  el.className = 'move-quality-badge ' + lastMoveQuality.css;
+  el.style.left = pos.x + 'px';
+  el.style.top = pos.y + 'px';
+  el.style.width = size + 'px';
+  el.style.height = size + 'px';
+  el.innerHTML = QUALITY_ICONS[lastMoveQuality.css] || '';
+
+  moveQualityLayerEl.appendChild(el);
+}
+
+// Mostra il badge di qualità sulla casella data (in genere la casella di arrivo dell'ultima mossa).
+function showMoveQualityBadge(square, css) {
+  lastMoveQuality = { square, css };
+  renderMoveQualityBadge();
+}
+
+// Rimuove il badge (nuova partita, oppure nessuna mossa ancora giocata dopo un "Annulla mossa").
+function clearMoveQualityBadge() {
+  lastMoveQuality = null;
+  if (moveQualityLayerEl) moveQualityLayerEl.innerHTML = '';
+}
+
 // ========== SEZIONE: Esecuzione mosse e click-to-move ==========
 // Esegue una mossa a partire da casella di partenza/arrivo e gestisce l'interazione "clicca per muovere" (in alternativa al drag-and-drop).
 // ========================================
@@ -772,6 +850,7 @@ function newGame() {
   plyCount = 0;
   clearSelection();
   clearArrows();
+  clearMoveQualityBadge();
   moveListInnerEl.innerHTML = '';
   plyHistory = [];
   currentRowEl = null;
@@ -809,6 +888,13 @@ function undoMove() {
   const lastEntry = plyHistory.length ? plyHistory[plyHistory.length - 1] : null;
   setOpeningName(lastEntry ? lastEntry.openingNameAfter : '');
 
+  // Ripristina il badge sulla mossa ora "ultima", oppure lo rimuove se non ci sono più mosse
+  if (lastEntry) {
+    showMoveQualityBadge(lastEntry.qualitySquare, lastEntry.qualityCss);
+  } else {
+    clearMoveQualityBadge();
+  }
+
   setEngineStatus('Mossa annullata. Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
 }
 
@@ -821,7 +907,10 @@ function flipBoard() {
   clearSelection();
   clearArrows();
   updateEvalBar(lastEvalScore, lastEvalSideToMove);
-  requestAnimationFrame(() => board.resize());
+  requestAnimationFrame(() => {
+    board.resize();
+    renderMoveQualityBadge(); // riposiziona il badge sulla nuova disposizione (specchiata) della scacchiera
+  });
 }
 
 // ========== SEZIONE: Inizializzazione ==========
@@ -844,6 +933,9 @@ $('#board').on('click', '.square-55d63', function () {
 
 // --- Frecce di annotazione: tasto destro + trascinamento -------------------
 arrowLayerEl = createArrowLayer();
+
+// --- Badge di qualità mossa (libro/stella/pollice/check/?!/?/??) -----------
+moveQualityLayerEl = createMoveQualityLayer();
 
 const boardEl = document.getElementById('board');
 
@@ -886,6 +978,7 @@ $(document).on('mouseup', (e) => {
 window.addEventListener('resize', () => {
   board.resize();
   renderArrows();
+  renderMoveQualityBadge();
 });
 
 document.getElementById('newGameBtn').addEventListener('click', newGame);
