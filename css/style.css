@@ -778,3 +778,21 @@ body {
 .square-55d63.checkmated-king {
   box-shadow: inset 0 0 0 9999px rgba(209, 16, 3, 0.34); /* evidenzia in rosso la casella del re sotto scacco matto */
 }
+
+
+
+
+/*prova nuova*/
+/* ========== SEZIONE: Tablet in orizzontale ==========
+   Tra 701px e 1050px in landscape c'è spazio per affiancare le colonne, ma serve una base più stretta di quella desktop per farcele stare.
+   ======================================== */
+@media (min-width: 701px) and (max-width: 1050px) and (orientation: landscape) {
+  .board-section {
+    flex: 1 1 380px;
+    max-width: 460px;
+  }
+  .panel-section {
+    flex: 1 1 380px;
+    max-width: 460px;
+  }
+}
