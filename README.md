@@ -1,7 +1,7 @@
 # Chess Trainer
 
 Sito statico per allenarsi a scacchi: scacchiera interattiva con commento
-in tempo reale di Stockfish 18 (eseguito nel browser via WebAssembly) su
+in tempo reale di Stockfish 18 Lite (eseguito nel browser via WebAssembly) su
 ogni mossa giocata.
 
 Nessun backend, nessun account: tutta la logica gira lato client.
