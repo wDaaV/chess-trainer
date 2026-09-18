@@ -34,19 +34,19 @@ body {
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 24px 16px 24px;
+  padding: 16px;
   gap: 10px;
 }
 
 .site-logo {
-  width: 128px;
-  height: 128px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
 }
 
 .site-header h1 { margin: 0; }
 
-@media (max-width: 640px), (orientation: landscape) and (max-height: 500px) {
+@media (max-width: 640px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse){
   .site-header {
     padding: 5px 5px 0px;
     gap: 8px;
@@ -67,28 +67,36 @@ body {
    ========================================
 */
 .container {
+
   max-width: 1560px;
   margin: 0 auto;
   padding: 16px;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 10px;
-  align-items: stretch;
   justify-content: center;
+  grid-template-columns: minmax(0, 780px);
 }
 
 /* --- Colonna scacchiera ---*/
 .board-section {
-  flex: 1 1 700px;
   max-width: 780px;
   min-width: 0;
 }
 
 .board-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 52px minmax(0, 1fr);
+  grid-template-areas:
+    "eval captured board"
+    ".    .        status";
   align-items: stretch;
   gap: 10px;
 }
+
+.eval-bar-wrap { grid-area: eval; }
+.captured-wrap { grid-area: captured; }
+.board-shell { grid-area: board; }
+#engineStatus { grid-area: status; }
 
 .board {
   flex: 1 1 auto;
@@ -98,9 +106,7 @@ body {
 
 .board-shell {
   position: relative; /* riferimento per gli elementi assoluti sovrapposti (frecce, overlay scacco matto) */
-  flex: 1 1 auto;
   min-width: 0;
-  width: 100%;
 }
 
 /* --- Barra di valutazione verticale accanto alla scacchiera --- */
@@ -109,8 +115,6 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  flex: 0 0 40px;
-  width: 40px;
 }
 
 /* --- Colonna dei pezzi catturati --- */
@@ -119,8 +123,6 @@ body {
   flex-direction: column;
   justify-content: space-between;
   gap: 8px;
-  flex: 0 0 52px;
-  width: 52px;
   align-self: stretch;
 }
 
@@ -145,7 +147,7 @@ body {
 }
 
 @media (max-width: 480px) {
-  .captured-wrap { flex: 0 0 34px; width: 34px; }
+  .board-row { grid-template-columns: 40px 34px minmax(0, 1fr); }
   .captured-tray { font-size: 15px; }
 }
 
@@ -183,10 +185,17 @@ body {
 }
 
 .status {
-  margin-top: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 10px;
   color: var(--muted);
   font-size: 14px;
   min-height: 20px;
+  text-align: center;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 /* --- Evidenziazione mosse possibili sulla scacchiera (click e drag) --- */
@@ -252,7 +261,6 @@ body {
 /* --- Colonna pannello: controlli + analisi mosse ---*/
 
 .panel-section {
-  flex: 1 1 520px;
   max-width: 620px;
   min-width: 0;
   background: var(--panel);
@@ -313,7 +321,6 @@ body {
 @media (min-width: 641px) {
 
   .panel-section {
-    flex: 1 1 700px;   /* più spazio di base assegnato dal flexbox */
     max-width: 720px;  /* limite massimo alzato, la scacchiera resta invariata */
   }
 
@@ -369,7 +376,9 @@ body {
   white-space: nowrap;
 }
 
-.panel-section h2 { margin-top: 0; font-size: 18px; }
+.panel-section h2 { margin: 0; font-size: 18px; }
+
+.opening-name { margin: 8px 0px; }
 
 /* Intestazione delle due colonne Bianco / Nero */
 .move-list-header {
@@ -511,11 +520,10 @@ body {
    Sotto 1050px la colonna scacchiera e quella del pannello si impilano verticalmente invece di stare affiancate.
    ========================================
 */
-@media (max-width: 1050px) and (orientation: portrait) {
-  .container { flex-direction: column; align-items: stretch; }
+@media (max-width: 1050px) and (orientation: portrait) and (pointer: coarse) {
+  .container { grid-template-columns: minmax(0, 100%); }
   .board-section, .panel-section {
     max-width: 100%;
-    flex: 1 1 auto;
   }
   .move-list {
     flex: 0 1 auto;
@@ -523,11 +531,10 @@ body {
   }
 }
 
-@media (max-width: 700px) and (orientation: landscape) {
-  .container { flex-direction: column; align-items: stretch; }
+@media (max-width: 700px) and (orientation: landscape) and (pointer: coarse){
+  .container { grid-template-columns: minmax(0, 100%); }
   .board-section, .panel-section {
     max-width: 100%;
-    flex: 1 1 auto;
   }
   .move-list {
     flex: 0 1 auto;
@@ -777,19 +784,27 @@ body {
 }
 
 
-
+/* ========== SEZIONE: Monitor desktop ==========
+   Da 1050px in su
+======================================== */
+@media (min-width: 1050px) {
+  .container {
+    grid-template-columns: minmax(0, 780px) minmax(0, 720px);
+  }
+}
 
 
 /* ========== SEZIONE: Tablet in orizzontale ==========
    Tra 701px e 1050px in landscape c'è spazio per affiancare le colonne, ma serve una base più stretta di quella desktop per farcele stare.
    ======================================== */
-@media (min-width: 700px) and (max-width: 1400px) and (orientation: landscape) {
+@media (min-width: 700px) and (max-width: 1400px) and (orientation: landscape) and (pointer: coarse) {
+  .container {
+    grid-template-columns: minmax(0, 560px) minmax(0, 520px);
+  }
   .board-section {
-    flex: 1 1 460px;
     max-width: 560px;
   }
   .panel-section {
-    flex: 1 1 420px;
     max-width: 520px;
   }
   .controls {

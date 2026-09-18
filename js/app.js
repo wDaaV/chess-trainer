@@ -975,10 +975,21 @@ $(document).on('mouseup', (e) => {
   }
 });
 
-window.addEventListener('resize', () => {
+function fullBoardResize() {
   board.resize();
   renderArrows();
   renderMoveQualityBadge();
+}
+
+window.addEventListener('resize', fullBoardResize);
+
+const boardResizeObserver = new ResizeObserver(() => {
+  fullBoardResize();
+});
+boardResizeObserver.observe(boardShellEl);
+
+window.addEventListener('load', () => {
+  requestAnimationFrame(fullBoardResize);
 });
 
 document.getElementById('newGameBtn').addEventListener('click', newGame);
