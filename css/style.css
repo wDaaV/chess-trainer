@@ -34,7 +34,7 @@ body {
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 16px;
+  padding-top: 8px;
   gap: 10px;
 }
 
@@ -70,7 +70,7 @@ body {
 
   max-width: 1560px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 0px 16px;
   display: grid;
   gap: 10px;
   justify-content: center;
@@ -96,7 +96,7 @@ body {
 .eval-bar-wrap { grid-area: eval; }
 .captured-wrap { grid-area: captured; }
 .board-shell { grid-area: board; }
-#engineStatus { grid-area: status; }
+.status-row { grid-area: status; }
 
 .board {
   flex: 1 1 auto;
@@ -122,7 +122,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 8px;
+  gap: 0px;
   align-self: stretch;
 }
 
@@ -197,6 +197,30 @@ body {
     0 1px 0 rgba(255, 255, 255, 0.05) inset,
     0 2px 8px rgba(0, 0, 0, 0.25);
 }
+
+/* --- Riga di stato: pulsante suggerimento + testo di stato, in due blocchi uguali --- */
+.status-row {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+  min-width: 0;
+}
+
+.status-row > * {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.hint-btn {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.hint-btn:hover { border-color: var(--accent); }
 
 /* --- Evidenziazione mosse possibili sulla scacchiera (click e drag) --- */
 .square-55d63 {
@@ -275,6 +299,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding-bottom: 16px;
   margin-bottom: 16px;
@@ -285,72 +310,26 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* --- Solo mobile: due righe distinte --- */
-@media (max-width: 640px) {
-  .controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .controls-row {
-    width: 100%;
-  }
-  .depth-control {
-    width: 100%;
-  }
-  .depth-control select {
-    flex: 1; /* la select riempie lo spazio residuo accanto alla label */
-  }
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .controls-row-buttons {
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .controls-row-buttons button {
-  flex: 1 1 0;
+  flex: 1 1 auto;
 }
 
 .controls-row-depth {
   justify-content: center;
 }
 
-/* --- Solo desktop: tutto su un'unica riga, spaziatura uniforme --- */
+/* --- Solo desktop --- */
 @media (min-width: 641px) {
-
   .panel-section {
     max-width: 720px;  /* limite massimo alzato, la scacchiera resta invariata */
-  }
-
-  .controls {
-    flex-wrap: nowrap;
-    justify-content: space-evenly; /* stessa distanza tra elementi/bordi, a partire dal centro */
-  }
-
-  .controls-row {
-    width: auto;
-    flex: 0 0 auto;
-  }
-
-  .controls-row-buttons,
-  .controls-row-depth {
-    flex: 0 0 auto;
-    justify-content: space-evenly;
-  }
-
-  .controls-row-buttons button {
-    flex: 0 0 auto;      /* il bottone si adatta al proprio testo, non si allarga */
-    white-space: nowrap; /* "Annulla mossa" resta su una sola riga */
-  }
-
-  .depth-control {
-    width: auto;
-  }
-
-  .depth-control select {
-    flex: 0 0 auto;
   }
 }
 
@@ -372,8 +351,19 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.depth-control label {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.depth-control select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel-section h2 { margin: 0; font-size: 18px; }
@@ -410,8 +400,9 @@ body {
 }
 
 .move-list {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: 480px;
   overflow-y: auto;
 }
 
@@ -525,10 +516,6 @@ body {
   .board-section, .panel-section {
     max-width: 100%;
   }
-  .move-list {
-    flex: 0 1 auto;
-    max-height: 480px;
-  }
 }
 
 @media (max-width: 700px) and (orientation: landscape) and (pointer: coarse){
@@ -536,14 +523,17 @@ body {
   .board-section, .panel-section {
     max-width: 100%;
   }
-  .move-list {
-    flex: 0 1 auto;
-    max-height: 480px;
-  }
 }
 
 @media (max-width: 480px) {
   .eval-bar { width: 18px; }
+
+  .status-row { gap: 6px; }
+
+  .status-row > * {
+    padding: 10px 6px;
+    font-size: 13px;
+  }
 }
 
 /* ========== SEZIONE: Legenda della notazione scacchistica ========== */
@@ -650,7 +640,7 @@ body {
   stroke: none;
 }
 
-/* ========== SEZIONE: Simbolo di qualità mossa (stile chess.com/wintrchess) ==========
+/* ========== SEZIONE: Simbolo di qualità mossa ==========
    Cerchio colorato con icona bianca, mostrato in alto a destra della casella di arrivo dell'ultima mossa giocata. Layer overlay separato (come le frecce), NON inserito dentro le celle di chessboard.js, che le ricrea a ogni mossa.
    ========================================
 */
@@ -783,6 +773,9 @@ body {
   box-shadow: inset 0 0 0 9999px rgba(209, 16, 3, 0.34); /* evidenzia in rosso la casella del re sotto scacco matto */
 }
 
+.square-55d63.hint-square {
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--best) 45%, transparent); /* evidenzia in verde la casella del pezzo suggerito */
+}
 
 /* ========== SEZIONE: Monitor desktop ==========
    Da 1050px in su
@@ -790,6 +783,10 @@ body {
 @media (min-width: 1050px) {
   .container {
     grid-template-columns: minmax(0, 780px) minmax(0, 720px);
+  }
+  .move-list {
+    flex: 1 1 0;
+    max-height: none;
   }
 }
 
@@ -807,12 +804,8 @@ body {
   .panel-section {
     max-width: 520px;
   }
-  .controls {
-    flex-wrap: wrap;
-    row-gap: 10px;
-  }
-  .controls-row-depth {
-    flex-basis: 100%;
-    justify-content: center;
+  .move-list {
+    flex: 1 1 0;
+    max-height: none;
   }
 }
