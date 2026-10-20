@@ -80,12 +80,12 @@ const checkmateSubtitleEl = document.getElementById('checkmateSubtitle'); // sot
 const capturedWrapEl = document.getElementById('capturedWrap'); // wrapper dei vassoi dei pezzi catturati
 const capturedByWhiteEl = document.getElementById('capturedByWhite'); // vassoio pezzi catturati dal bianco
 const capturedByBlackEl = document.getElementById('capturedByBlack'); // vassoio pezzi catturati dal nero
+const hintBtnEl = document.getElementById('hintBtn'); // pulsante "Suggerimento"
 
 // ========== SEZIONE: Pezzi catturati ==========
 // Calcola e visualizza, in due "vassoi", i pezzi catturati da ciascun colore, ricostruendoli ogni volta dallo storico delle mosse di chess.js.
 // ========================================
-const WHITE_GLYPHS = { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕' }; // simboli Unicode dei pezzi bianchi
-const BLACK_GLYPHS = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' }; // simboli Unicode dei pezzi neri
+const PIECE_GLYPHS = { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕' }; // simboli Unicode usati per i pezzi catturati di entrambi i colori
 const CAPTURE_ORDER = { p: 1, n: 2, b: 3, r: 4, q: 5 }; // ordine di visualizzazione (valore crescente del pezzo)
 
 function renderCapturedTray(container, pieceTypes, glyphMap) {
@@ -112,8 +112,8 @@ function updateCapturedPieces() {
   });
 
   const byValue = (a, b) => CAPTURE_ORDER[a] - CAPTURE_ORDER[b]; // funzione di ordinamento per valore del pezzo
-  renderCapturedTray(capturedByWhiteEl, capturedByWhite.sort(byValue), BLACK_GLYPHS);
-  renderCapturedTray(capturedByBlackEl, capturedByBlack.sort(byValue), WHITE_GLYPHS);
+  renderCapturedTray(capturedByWhiteEl, capturedByWhite.sort(byValue), PIECE_GLYPHS);
+  renderCapturedTray(capturedByBlackEl, capturedByBlack.sort(byValue), PIECE_GLYPHS);
 }
 
 function setEngineStatus(text) {
@@ -294,6 +294,7 @@ async function ensureInitialAnalysis() {
 
 async function processMove(moveObj, fenBefore, fenAfter) {
   boardLocked = true; // blocca l'interazione mentre il motore analizza
+  clearHint();
   updateCapturedPieces();
   setEngineStatus('Stockfish sta analizzando la mossa…');
 
@@ -441,6 +442,7 @@ function jumpAndReplay(thisPly, bestMoveUci) {
   clearCheckmateEffects();
   clearSelection();
   clearArrows();
+  clearHint();
 
   // Rimuove dallo storico (e dal DOM) la mossa "thisPly" e tutte quelle giocate dopo, esattamente come farebbe undoMove() ripetuto più volte: stessa logica di gestione delle righe bianco/nero, solo in un ciclo.
   while (plyHistory.length >= thisPly) {
@@ -564,6 +566,39 @@ if (boardShellEl) {
   boardShellEl.addEventListener('animationend', () => {
     boardShellEl.classList.remove('checkmate-shake'); // rimuove la classe a fine animazione, per poterla riattivare in seguito
   });
+}
+
+// ========== SEZIONE: Suggerimento della prossima mossa ==========
+// Usa la mossa migliore calcolata da Stockfish per la posizione corrente (cache in currentAnalysis, oppure nuova analisi se la cache è vuota) ed evidenzia in verde la casella del pezzo da muovere.
+// ========================================
+let hintSquare = null; // casella di partenza della mossa suggerita, null se nessun suggerimento è attivo
+
+function clearHint() {
+  $('#board .square-55d63').removeClass('hint-square'); // rimuove l'evidenziazione verde
+  hintSquare = null;
+}
+
+async function showHint() {
+  if (boardLocked || chess.isGameOver()) return; // interazione non consentita
+
+  clearHint();
+
+  if (!currentAnalysis) {
+    boardLocked = true; // evita mosse e richieste doppie mentre il motore analizza
+    hintBtnEl.disabled = true;
+    const previousStatus = engineStatusEl.textContent;
+    setEngineStatus('Calcolo il suggerimento…');
+    currentAnalysis = await analyzePosition(chess.fen(), analysisDepth);
+    setEngineStatus(previousStatus);
+    hintBtnEl.disabled = false;
+    boardLocked = false;
+  }
+
+  const bestMoveUci = currentAnalysis.bestMoveUci;
+  if (!bestMoveUci || bestMoveUci.length < 4) return; // nessuna mossa disponibile
+
+  hintSquare = bestMoveUci.slice(0, 2); // casella di partenza della mossa migliore
+  $(squareSelector(hintSquare)).addClass('hint-square');
 }
 
 // ========== SEZIONE: Frecce di annotazione ==========
@@ -844,6 +879,7 @@ function onSnapEnd() {
 function newGame() {
   chess.reset();
   clearCheckmateEffects();
+  clearHint();
   updateCapturedPieces();
   board.start();
   currentAnalysis = null;
@@ -866,6 +902,7 @@ function newGame() {
 
 function undoMove() {
   clearCheckmateEffects();
+  clearHint();
   const undone = chess.undo();
   if (!undone) return; // nessuna mossa da annullare
   board.position(chess.fen());
@@ -910,6 +947,7 @@ function flipBoard() {
   requestAnimationFrame(() => {
     board.resize();
     renderMoveQualityBadge(); // riposiziona il badge sulla nuova disposizione (specchiata) della scacchiera
+    if (hintSquare) $(squareSelector(hintSquare)).addClass('hint-square'); // riapplica il suggerimento sulla nuova disposizione
   });
 }
 
@@ -995,6 +1033,7 @@ window.addEventListener('load', () => {
 document.getElementById('newGameBtn').addEventListener('click', newGame);
 document.getElementById('undoBtn').addEventListener('click', undoMove);
 document.getElementById('flipBtn').addEventListener('click', flipBoard);
+hintBtnEl.addEventListener('click', showHint);
 
 // Apertura/chiusura della legenda notazioni
 const notationLegendEl = document.getElementById('notationLegend');
