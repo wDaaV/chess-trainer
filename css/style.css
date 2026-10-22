@@ -310,7 +310,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
+  flex: 1 1 100%;
   min-width: 0;
 }
 
@@ -324,6 +324,7 @@ body {
 
 .controls-row-depth {
   justify-content: center;
+  flex-wrap: wrap; 
 }
 
 /* --- Solo desktop --- */
@@ -808,4 +809,21 @@ body {
     flex: 1 1 0;
     max-height: none;
   }
+}
+
+/* ========== SEZIONE: Stato "disabilitato" dei bottoni e modalità revisione ========== */
+.controls button:disabled,
+.hint-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.controls button:disabled:hover,
+.hint-btn:disabled:hover {
+  border-color: var(--border); /* niente bordo blu al passaggio su un bottone disabilitato */
+}
+
+/* Durante la revisione delle mosse i pezzi non sono selezionabili: niente cursore "mano" */
+.board-shell.viewing-past .square-55d63 {
+  cursor: default;
 }

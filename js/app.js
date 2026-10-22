@@ -36,6 +36,7 @@ let lastEvalSideToMove = 'w';    // lato a cui era riferito l'ultimo punteggio
 let plyHistory = [];       // pila con un record per ogni mossa giocata
 let currentRowEl = null;   // riga (bianco+nero) attualmente in costruzione
 let currentOpeningName = ''; // nome dell'apertura attualmente riconosciuta (stringa vuota se nessuna)
+let viewPly = null; // null = si sta guardando la posizione finale (partita "live"); altrimenti numero di semi-mosse visualizzate (0 = posizione iniziale)
 
 // ========== SEZIONE: Database delle aperture ==========
 // Carica e interroga il database delle aperture (mosse "da libro") a partire da un file JSON che mappa posizioni (in formato EPD) a nome/codice ECO.
@@ -81,6 +82,8 @@ const capturedWrapEl = document.getElementById('capturedWrap'); // wrapper dei v
 const capturedByWhiteEl = document.getElementById('capturedByWhite'); // vassoio pezzi catturati dal bianco
 const capturedByBlackEl = document.getElementById('capturedByBlack'); // vassoio pezzi catturati dal nero
 const hintBtnEl = document.getElementById('hintBtn'); // pulsante "Suggerimento"
+const prevMoveBtnEl = document.getElementById('prevMoveBtn'); // pulsante "Indietro"
+const nextMoveBtnEl = document.getElementById('nextMoveBtn'); // pulsante "Avanti"
 
 // ========== SEZIONE: Pezzi catturati ==========
 // Calcola e visualizza, in due "vassoi", i pezzi catturati da ciascun colore, ricostruendoli ogni volta dallo storico delle mosse di chess.js.
@@ -100,8 +103,9 @@ function renderCapturedTray(container, pieceTypes, glyphMap) {
 }
 
 // Ricalcola da zero i pezzi mangiati leggendo lo storico di chess.js: funziona automaticamente anche dopo "Annulla mossa" o "jumpAndReplay", senza bisogno di tenere contatori manuali da tenere sincronizzati.
-function updateCapturedPieces() {
-  const history = chess.history({ verbose: true }); // storico completo delle mosse, con dettagli
+function updateCapturedPieces(upToPly = null) {
+  const fullHistory = chess.history({ verbose: true }); // storico completo delle mosse, con dettagli
+  const history = upToPly === null ? fullHistory : fullHistory.slice(0, upToPly); // in revisione, solo fino alla mossa mostrata
   const capturedByWhite = []; // pezzi neri catturati dal bianco
   const capturedByBlack = []; // pezzi bianchi catturati dal nero
 
@@ -294,9 +298,10 @@ async function ensureInitialAnalysis() {
 
 async function processMove(moveObj, fenBefore, fenAfter) {
   boardLocked = true; // blocca l'interazione mentre il motore analizza
+  refreshNavUi();
   clearHint();
   updateCapturedPieces();
-  setEngineStatus('Stockfish sta analizzando la mossa…');
+  setEngineStatus('Analisi mossa');
 
   // Analisi "prima" della mossa (di solito già in cache dalla mossa precedente)
   if (!currentAnalysis) {
@@ -340,7 +345,9 @@ async function processMove(moveObj, fenBefore, fenAfter) {
     fenBefore: fenBefore,   // posizione esatta da cui ripartire se si clicca il link di questa mossa
     san: moveObj.san,
     qualitySquare: moveObj.to,
-    qualityCss: classification.css
+    qualityCss: classification.css,
+    evalScoreAfter: afterAnalysis.score,
+    evalSideAfter: chess.turn()
   });
 
   updateEvalBar(afterAnalysis.score, chess.turn());
@@ -359,6 +366,7 @@ async function processMove(moveObj, fenBefore, fenAfter) {
   }
 
   boardLocked = false; // sblocca l'interazione, l'analisi è terminata
+  refreshNavUi();
 }
 
 function getGameOverText() {
@@ -433,6 +441,8 @@ function jumpAndReplay(thisPly, bestMoveUci) {
   if (boardLocked) return; // non permesso mentre il motore sta analizzando
   if (thisPly < 1 || thisPly > plyHistory.length) return; // indice fuori dai limiti dello storico
   if (!bestMoveUci || bestMoveUci.length < 4) return; // nessuna mossa migliore disponibile
+
+  viewPly = null; // esce dalla modalità revisione
 
   // La mossa che stiamo per scartare: da qui recuperiamo il FEN e la valutazione "prima" di essa, verso cui riportare partita e barra di eval.
   const cutEntry = plyHistory[thisPly - 1];
@@ -579,7 +589,7 @@ function clearHint() {
 }
 
 async function showHint() {
-  if (boardLocked || chess.isGameOver()) return; // interazione non consentita
+  if (boardLocked || chess.isGameOver() || viewPly !== null) return; // interazione non consentita
 
   clearHint();
 
@@ -800,7 +810,7 @@ function attemptMove(from, to) {
 
 // Gestisce il click su una casella: primo click seleziona un proprio pezzo (mostrando le mosse possibili), secondo click su una casella di destinazione valida esegue la mossa; click sulla stessa casella deseleziona; click su un altro proprio pezzo sposta la selezione. NOTA: la selezione vera e propria di un pezzo avviene già in onDragStart (vedi sotto), perché chessboard.js non genera un evento "click" affidabile sui pezzi. Questa funzione gestisce quindi soprattutto il click sulla casella di destinazione (vuota o con pezzo avversario catturabile) e il caso di click su una casella "non valida" per deselezionare.
 function handleSquareClick(square) {
-  if (boardLocked || chess.isGameOver()) return; // interazione non consentita
+  if (boardLocked || chess.isGameOver() || viewPly !== null) return; // interazione non consentita
 
   if (selectedSquare) {
     if (square === selectedSquare) {
@@ -836,6 +846,7 @@ function handleSquareClick(square) {
 // ========================================
 function onDragStart(source, piece) {
   if (boardLocked) return false; // interazione bloccata durante l'analisi
+  if (viewPly !== null) return false; // in revisione: i pezzi non sono selezionabili
   if (chess.isGameOver()) return false; // partita già conclusa
   const isWhitePiece = piece.startsWith('w');
   if ((chess.turn() === 'w' && !isWhitePiece) || (chess.turn() === 'b' && isWhitePiece)) {
@@ -877,6 +888,7 @@ function onSnapEnd() {
 // Funzioni richiamate dai pulsanti dell'interfaccia: nuova partita, annulla mossa e capovolgimento della scacchiera.
 // ========================================
 function newGame() {
+  viewPly = null;
   chess.reset();
   clearCheckmateEffects();
   clearHint();
@@ -893,14 +905,17 @@ function newGame() {
   setOpeningName('');
   updateEvalBar({ cp: 0 }, 'w');
   boardLocked = true;
+  refreshNavUi();
   setEngineStatus('Nuova partita. Calcolo la posizione iniziale…');
   ensureInitialAnalysis().then(() => {
     boardLocked = false;
+    refreshNavUi();
     setEngineStatus('Muove il bianco.');
   });
 }
 
 function undoMove() {
+  viewPly = null;
   clearCheckmateEffects();
   clearHint();
   const undone = chess.undo();
@@ -932,6 +947,7 @@ function undoMove() {
     clearMoveQualityBadge();
   }
 
+  viewPly = null;
   setEngineStatus('Mossa annullata. Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.');
 }
 
@@ -949,6 +965,81 @@ function flipBoard() {
     renderMoveQualityBadge(); // riposiziona il badge sulla nuova disposizione (specchiata) della scacchiera
     if (hintSquare) $(squareSelector(hintSquare)).addClass('hint-square'); // riapplica il suggerimento sulla nuova disposizione
   });
+}
+
+// ========== SEZIONE: Navigazione nelle mosse (revisione) ==========
+// Permette di rivedere le posizioni passate SENZA modificare la partita: l'istanza "chess" non viene mai toccata, si ricostruisce solo la posizione da mostrare. Finché si è in revisione i pezzi non sono selezionabili e il suggerimento è disabilitato: per riprendere a giocare bisogna tornare alla posizione finale con "Avanti".
+// ========================================
+function refreshNavUi() {
+  const total = plyHistory.length;
+  const current = viewPly === null ? total : viewPly;
+  prevMoveBtnEl.disabled = boardLocked || current <= 0;      // niente da rivedere prima della posizione iniziale
+  nextMoveBtnEl.disabled = boardLocked || viewPly === null;  // già alla posizione finale
+  hintBtnEl.disabled = viewPly !== null;                     // suggerimento riattivato solo alla posizione finale
+  boardShellEl.classList.toggle('viewing-past', viewPly !== null);
+}
+
+function liveStatusText() {
+  if (chess.isGameOver()) return getGameOverText();
+  return 'Tocca al ' + (chess.turn() === 'w' ? 'bianco' : 'nero') + '.';
+}
+
+// Mostra la posizione dopo "target" semi-mosse (0 = posizione iniziale, plyHistory.length = posizione finale).
+function goToPly(target) {
+  if (boardLocked) return; // non permesso mentre il motore sta analizzando
+  const total = plyHistory.length;
+  if (total === 0) return;
+
+  target = Math.max(0, Math.min(total, target));
+  viewPly = target === total ? null : target;
+
+  clearSelection();
+  clearArrows();
+  clearHint();
+  clearCheckmateEffects();
+
+  // Ricostruisce la posizione da mostrare su una partita temporanea (la partita reale resta intatta)
+  let fen = chess.fen();
+  if (viewPly !== null) {
+    const temp = new Chess();
+    chess.history().slice(0, viewPly).forEach((san) => temp.move(san));
+    fen = temp.fen();
+  }
+  board.position(fen);
+  updateCapturedPieces(viewPly);
+
+  // Barra di valutazione, nome dell'apertura e badge di qualità riferiti alla posizione mostrata
+  if (target === 0) {
+    updateEvalBar(plyHistory[0].evalScoreBefore, plyHistory[0].evalSideBefore);
+    setOpeningName('');
+    clearMoveQualityBadge();
+  } else {
+    const entry = plyHistory[target - 1];
+    updateEvalBar(entry.evalScoreAfter, entry.evalSideAfter);
+    setOpeningName(entry.openingNameAfter);
+    showMoveQualityBadge(entry.qualitySquare, entry.qualityCss);
+  }
+
+  if (viewPly === null) {
+    // Tornati alla posizione finale: si riprende la partita normalmente
+    if (chess.isCheckmate()) showCheckmateEffects();
+    setEngineStatus(liveStatusText());
+  } else if (viewPly === 0) {
+    setEngineStatus('Revisione: posizione iniziale.');
+  } else {
+    setEngineStatus('Revisione: dopo la mossa ' + viewPly + ' di ' + total + '.');
+  }
+
+  refreshNavUi();
+}
+
+function showPreviousMove() {
+  goToPly((viewPly === null ? plyHistory.length : viewPly) - 1);
+}
+
+function showNextMove() {
+  if (viewPly === null) return; // già alla posizione finale
+  goToPly(viewPly + 1);
 }
 
 // ========== SEZIONE: Inizializzazione ==========
@@ -1035,6 +1126,10 @@ document.getElementById('undoBtn').addEventListener('click', undoMove);
 document.getElementById('flipBtn').addEventListener('click', flipBoard);
 hintBtnEl.addEventListener('click', showHint);
 
+prevMoveBtnEl.addEventListener('click', showPreviousMove);
+nextMoveBtnEl.addEventListener('click', showNextMove);
+refreshNavUi(); // stato iniziale: motore non ancora pronto, quindi bottoni disabilitati
+
 // Apertura/chiusura della legenda notazioni
 const notationLegendEl = document.getElementById('notationLegend');
 const notationLegendToggleEl = document.getElementById('notationLegendToggle');
@@ -1052,5 +1147,6 @@ Promise.all([engineReadyPromise, loadOpeningsBook()]).then(async () => {
   setEngineStatus('Motore pronto. Calcolo la posizione iniziale…');
   await ensureInitialAnalysis();
   boardLocked = false;
+  refreshNavUi();
   setEngineStatus('Muove il bianco.');
 });

@@ -72,7 +72,7 @@
         </div>
           <div class="status-row" id="statusRow">
             <button id="hintBtn" type="button" class="status hint-btn">Suggerimento</button> <!-- evidenzia la casella del pezzo da muovere -->
-            <p id="engineStatus" class="status">Caricamento del motore Stockfish…</p> <!-- testo di stato aggiornato da app.js -->
+            <p id="engineStatus" class="status">Caricamento di Stockfish</p> <!-- testo di stato aggiornato da app.js -->
           </div>
       </div>
     </section>
@@ -87,13 +87,15 @@
         <div class="controls-row controls-row-buttons">
           <button id="newGameBtn" type="button">Nuova partita</button>
           <button id="undoBtn" type="button">Annulla mossa</button>
-          <button id="flipBtn" type="button">Gira scacchiera</button>
+          <button id="prevMoveBtn" type="button" title="Mossa precedente" aria-label="Mossa precedente">Indietro</button>
+          <button id="nextMoveBtn" type="button" title="Mossa successiva" aria-label="Mossa successiva">Avanti</button>
         </div>
 
         <div class="controls-row controls-row-depth">
+          <button id="flipBtn" type="button">Gira scacchiera</button>
           <div class="depth-control">
             <label for="depthSelect">Profondità motore</label>
-            <select id="depthSelect"> <!-- profondità di ricerca UCI passata a Stockfish -->
+            <select id="depthSelect">
               <option value="10">10 — veloce</option>
               <option value="14" selected>14 — consigliata</option>
               <option value="18">18 — lenta, più forte</option>
@@ -101,7 +103,6 @@
           </div>
         </div>
       </div>
-
       <!-- ---- Sottosezione: lista delle mosse analizzate ---- -->
       <h2>Analisi delle mosse</h2>
       <h4 id="openingName" class="opening-name"></h4> <!-- nome dell'apertura riconosciuta, popolato da app.js -->
